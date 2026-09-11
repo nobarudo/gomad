@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -20,20 +21,26 @@ func stripANSI(str string) string {
 }
 
 type model struct {
-	filePath        string
-	content         string
-	viewport        viewport.Model
-	ready           bool
-	err             error
-	width           int
-	height          int
-	currentStyle    string
-	showStylePicker bool
-	showHelpModal   bool
-	styleIndex      int
-	availableStyles []string
-	renderedLines   []string
-	headingLines    []int
+	filePath          string
+	content           string
+	viewport          viewport.Model
+	ready             bool
+	err               error
+	width             int
+	height            int
+	currentStyle      string
+	showStylePicker   bool
+	showHelpModal     bool
+	styleIndex        int
+	availableStyles   []string
+	renderedLines     []string
+	headingLines      []int
+	searchInput       textinput.Model
+	showSearchInput   bool
+	searchQuery       string
+	searchResults     []int
+	currentMatchIndex int
+	pristineLines     []string
 }
 
 // Run はUIを初期化してプログラムを開始します
@@ -53,12 +60,19 @@ func Run(filePath string, style string) error {
 		}
 	}
 
+	ti := textinput.New()
+	ti.Placeholder = "Search... (Enter to search, Esc to cancel)"
+	ti.Prompt = "/"
+	ti.CharLimit = 100
+	ti.Width = 40
+
 	m := model{
 		filePath:        filePath,
 		content:         string(content),
 		currentStyle:    style,
 		availableStyles: styles,
 		styleIndex:      initialIndex,
+		searchInput:     ti,
 	}
 
 	p := tea.NewProgram(
@@ -127,7 +141,13 @@ func (m *model) renderContent() error {
 
 	m.viewport.SetContent(rendered)
 	m.renderedLines = strings.Split(rendered, "\n")
+	m.pristineLines = make([]string, len(m.renderedLines))
+	copy(m.pristineLines, m.renderedLines)
 	m.updateHeadingLines()
+
+	if m.searchQuery != "" {
+		m.executeSearch(m.searchQuery)
+	}
 
 	return nil
 }
@@ -185,11 +205,196 @@ func (m *model) prevHeading() {
 	}
 }
 
+type segment struct {
+	text   string
+	isANSI bool
+}
+
+// ANSIエスケープシーケンスと通常の文字に分解する（ルーン対応）
+func parseSegments(ansiStr string) []segment {
+	var segments []segment
+	runes := []rune(ansiStr)
+	n := len(runes)
+	i := 0
+	for i < n {
+		if runes[i] == '\x1b' {
+			start := i
+			i++ // skip '\x1b'
+			for i < n {
+				r := runes[i]
+				i++
+				if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+					break
+				}
+			}
+			segments = append(segments, segment{text: string(runes[start:i]), isANSI: true})
+		} else {
+			segments = append(segments, segment{text: string(runes[i]), isANSI: false})
+			i++
+		}
+	}
+	return segments
+}
+
+// 行内の検索ワードにのみハイライトを適用する（ルーンベースで完全にズレを防ぐ）
+func highlightQueryInLine(ansiStr string, query string, highlightStart, highlightEnd string) string {
+	if query == "" {
+		return ansiStr
+	}
+
+	segments := parseSegments(ansiStr)
+
+	var plainBuilder strings.Builder
+	var plainToSeg []int
+
+	for segIdx, seg := range segments {
+		if !seg.isANSI {
+			plainBuilder.WriteString(seg.text)
+			plainToSeg = append(plainToSeg, segIdx)
+		}
+	}
+
+	plainText := plainBuilder.String()
+	plainRunes := []rune(plainText)
+	lowerPlainRunes := []rune(strings.ToLower(plainText))
+	lowerQueryRunes := []rune(strings.ToLower(query))
+
+	queryLen := len(lowerQueryRunes)
+	if queryLen == 0 || len(plainRunes) < queryLen {
+		return ansiStr
+	}
+
+	// ルーンスライスでの検索
+	var matchStarts []int
+	n := len(lowerPlainRunes)
+	m := len(lowerQueryRunes)
+	for i := 0; i <= n-m; i++ {
+		match := true
+		for j := 0; j < m; j++ {
+			if lowerPlainRunes[i+j] != lowerQueryRunes[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			matchStarts = append(matchStarts, i)
+			i += m - 1 // 重複防止
+		}
+	}
+
+	if len(matchStarts) == 0 {
+		return ansiStr
+	}
+
+	for _, start := range matchStarts {
+		segStart := plainToSeg[start]
+		segEnd := plainToSeg[start+queryLen-1]
+
+		segments[segStart].text = highlightStart + segments[segStart].text
+		segments[segEnd].text = segments[segEnd].text + highlightEnd
+	}
+
+	var result strings.Builder
+	for _, seg := range segments {
+		result.WriteString(seg.text)
+	}
+	return result.String()
+}
+
+// 検索ワードで各行を検索する
+func (m *model) executeSearch(query string) {
+	m.searchQuery = query
+	m.searchResults = nil
+	m.currentMatchIndex = 0
+
+	if query == "" {
+		if len(m.pristineLines) > 0 {
+			m.renderedLines = make([]string, len(m.pristineLines))
+			copy(m.renderedLines, m.pristineLines)
+			m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
+		}
+		return
+	}
+
+	lowerQuery := strings.ToLower(query)
+	for i, line := range m.pristineLines {
+		plain := strings.ToLower(stripANSI(line))
+		if strings.Contains(plain, lowerQuery) {
+			m.searchResults = append(m.searchResults, i)
+		}
+	}
+
+	m.updateHighlight()
+}
+
+// 検索結果の特定行をハイライトしてビューポートに表示する
+func (m *model) updateHighlight() {
+	if len(m.pristineLines) == 0 {
+		return
+	}
+
+	m.renderedLines = make([]string, len(m.pristineLines))
+	copy(m.renderedLines, m.pristineLines)
+
+	if len(m.searchResults) == 0 {
+		m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
+		return
+	}
+
+	// 1. 全てのマッチ箇所に対して通常のハイライト（柔らかい黄色背景）を適用する
+	for i, line := range m.renderedLines {
+		m.renderedLines[i] = highlightQueryInLine(line, m.searchQuery, "\x1b[48;5;229m\x1b[38;5;0m", "\x1b[39;49m")
+	}
+
+	if m.currentMatchIndex < 0 {
+		m.currentMatchIndex = 0
+	}
+	if m.currentMatchIndex >= len(m.searchResults) {
+		m.currentMatchIndex = len(m.searchResults) - 1
+	}
+
+	targetLine := m.searchResults[m.currentMatchIndex]
+
+	// 2. 現在のアクティブなマッチ箇所を目立つハイライト（オレンジ背景）にする
+	m.renderedLines[targetLine] = highlightQueryInLine(m.pristineLines[targetLine], m.searchQuery, "\x1b[48;5;214m\x1b[38;5;0m", "\x1b[39;49m")
+
+	m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
+
+	// 画面の中央に配置するように YOffset を設定する
+	viewportHeight := m.viewport.Height
+	yOffset := targetLine - (viewportHeight / 2)
+	if yOffset < 0 {
+		yOffset = 0
+	}
+	m.viewport.SetYOffset(yOffset)
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	// --- 検索入力モード中の操作 ---
+	if m.showSearchInput {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc":
+				m.showSearchInput = false
+				m.searchInput.Blur()
+				return m, nil
+			case "enter":
+				m.showSearchInput = false
+				m.searchInput.Blur()
+				query := m.searchInput.Value()
+				m.executeSearch(query)
+				return m, nil
+			}
+		}
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		return m, cmd
+	}
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -234,6 +439,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case ":":
 			m.showHelpModal = true
 			return m, nil
+
+		case "/":
+			m.showSearchInput = true
+			m.searchInput.Focus()
+			m.searchInput.SetValue("")
+			return m, textinput.Blink
+
+		case "n":
+			if len(m.searchResults) > 0 {
+				m.currentMatchIndex = (m.currentMatchIndex + 1) % len(m.searchResults)
+				m.updateHighlight()
+			}
+
+		case "N":
+			if len(m.searchResults) > 0 {
+				m.currentMatchIndex = (m.currentMatchIndex - 1 + len(m.searchResults)) % len(m.searchResults)
+				m.updateHighlight()
+			}
+
+		case "esc":
+			m.searchQuery = ""
+			m.searchResults = nil
+			m.currentMatchIndex = 0
+			m.executeSearch("")
 
 		// Vimジャンプ操作
 		case "}":
@@ -310,7 +539,22 @@ func (m model) View() string {
 
 	// 上部ガイド：シンプルに保ち「:」でキーバインド一覧を表示することを案内
 	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':スタイル変更 | ':':キーバインド | 'q':QUIT)", m.filePath, m.currentStyle)
-	footer := fmt.Sprintf(" Scroll: %3.f%%", m.viewport.ScrollPercent()*100)
+
+	var footer string
+	if m.showSearchInput {
+		footer = " " + m.searchInput.View()
+	} else {
+		scrollPct := m.viewport.ScrollPercent() * 100
+		searchStatus := ""
+		if m.searchQuery != "" {
+			if len(m.searchResults) > 0 {
+				searchStatus = fmt.Sprintf(" | 🔍 %q (%d/%d) [n/N: Next/Prev, Esc: Clear]", m.searchQuery, m.currentMatchIndex+1, len(m.searchResults))
+			} else {
+				searchStatus = fmt.Sprintf(" | 🔍 %q (No matches) [Esc: Clear]", m.searchQuery)
+			}
+		}
+		footer = fmt.Sprintf(" Scroll: %3.f%%%s", scrollPct, searchStatus)
+	}
 
 	return fmt.Sprintf("%s\n%s\n%s", header, m.viewport.View(), footer)
 }
@@ -369,6 +613,11 @@ func (m model) helpModalView() string {
 	b.WriteString("\x1b[1m[Jump]\x1b[0m\n")
 	b.WriteString("  { / }         : 前 / 次の段落（空行）へジャンプ\n")
 	b.WriteString("  [ / ]         : 前 / 次の見出しへジャンプ\n\n")
+
+	b.WriteString("\x1b[1m[Search]\x1b[0m\n")
+	b.WriteString("  /             : 検索ワード入力\n")
+	b.WriteString("  n / N         : 次 / 前の検索マッチへ移動\n")
+	b.WriteString("  Esc           : 検索ハイライトをクリア\n\n")
 
 	b.WriteString("\x1b[1m[System]\x1b[0m\n")
 	b.WriteString("  s             : テーマ切り替えモーダル\n")
