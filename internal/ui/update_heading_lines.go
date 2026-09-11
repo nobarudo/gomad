@@ -1,27 +1,17 @@
 package ui
 
 import (
-	"regexp"
-	"strings"
+	"gomad/internal/sideber"
 )
 
 // Markdownの見出し位置（行番号）を解析・保持する
 func (m *model) updateHeadingLines() {
-	re := regexp.MustCompile(`(?m)^(#{1,6})\s+(.+)$`)
-	matches := re.FindAllStringSubmatch(m.content, -1)
+	items := sideber.ParseItems(m.content, m.renderedLines)
+	m.sidebar.SetItems(items)
 
-	var hLines []int
-	searchStart := 0
-
-	for _, match := range matches {
-		title := strings.TrimSpace(match[2])
-		for i := searchStart; i < len(m.renderedLines); i++ {
-			if strings.Contains(m.renderedLines[i], title) {
-				hLines = append(hLines, i)
-				searchStart = i + 1
-				break
-			}
-		}
+	hLines := make([]int, len(items))
+	for i, item := range items {
+		hLines[i] = item.Line
 	}
 	m.headingLines = hLines
 }

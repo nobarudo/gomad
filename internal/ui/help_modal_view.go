@@ -18,6 +18,8 @@ func (m model) helpModalView() string {
 	b.WriteString("  g / G         : 先頭 / 末尾へジャンプ\n\n")
 
 	b.WriteString("\x1b[1m[Jump]\x1b[0m\n")
+	b.WriteString("  t             : 目次（サイドバー）の開閉\n")
+	b.WriteString("  Tab           : 目次と本文の操作フォーカス切り替え\n")
 	b.WriteString("  { / }         : 前 / 次の段落（空行）へジャンプ\n")
 	b.WriteString("  [ / ]         : 前 / 次の見出しへジャンプ\n\n")
 

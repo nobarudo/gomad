@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestStripANSI(t *testing.T) {
@@ -157,5 +158,124 @@ func TestUpdateHighlight(t *testing.T) {
 
 	if !strings.Contains(stripANSI(m.renderedLines[2]), "Line 3") {
 		t.Errorf("Expected line 3 to contain 'Line 3', got %q", stripANSI(m.renderedLines[2]))
+	}
+}
+
+func TestSidebarToggleAndLayout(t *testing.T) {
+	m := model{
+		width:        100,
+		height:       30,
+		ready:        true,
+		content:      "# Heading 1\n\nText 1\n\n## Heading 2\n\nText 2",
+		currentStyle: "dark",
+		viewport:     viewport.New(100, 28),
+	}
+
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	if m.showSidebar {
+		t.Errorf("Expected sidebar initially hidden")
+	}
+
+	// 't' キーで開く
+	m.calculateLayout()
+	if m.viewport.Width != 100 {
+		t.Errorf("Expected viewport width 100, got %d", m.viewport.Width)
+	}
+
+	m.showSidebar = true
+	m.calculateLayout()
+
+	if m.viewport.Width >= 100 {
+		t.Errorf("Expected viewport width to shrink when sidebar is open, got %d", m.viewport.Width)
+	}
+
+	if len(m.sidebar.Items()) != 2 {
+		t.Fatalf("Expected 2 items in sidebar, got %d", len(m.sidebar.Items()))
+	}
+	if m.sidebar.Items()[0].Level != 1 {
+		t.Errorf("Expected item 0 level 1, got %d", m.sidebar.Items()[0].Level)
+	}
+	if m.sidebar.Items()[1].Level != 2 {
+		t.Errorf("Expected item 1 level 2, got %d", m.sidebar.Items()[1].Level)
+	}
+
+	// 閉じる
+	m.showSidebar = false
+	m.calculateLayout()
+	if m.viewport.Width != 100 {
+		t.Errorf("Expected viewport width 100 after closing sidebar, got %d", m.viewport.Width)
+	}
+}
+
+func TestSidebarEnterKeepOpenAndTab(t *testing.T) {
+	// 長いコンテンツにしてスクロール可能にする
+	var longContent strings.Builder
+	longContent.WriteString("# First\n\n")
+	for i := 0; i < 20; i++ {
+		longContent.WriteString("Some line of text\n\n")
+	}
+	longContent.WriteString("## Second\n\nMore text\n\n")
+	for i := 0; i < 20; i++ {
+		longContent.WriteString("Trailing line of text\n\n")
+	}
+
+	m := model{
+		width:        100,
+		height:       10,
+		ready:        true,
+		content:      longContent.String(),
+		currentStyle: "dark",
+		viewport:     viewport.New(100, 8),
+	}
+
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	// 1. 't' キーを押して開く
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updatedM.(model)
+	if !m.showSidebar {
+		t.Fatalf("Expected showSidebar to be true")
+	}
+	if !m.sidebarFocused {
+		t.Fatalf("Expected sidebarFocused to be true")
+	}
+
+	// 2. 'j' でカーソルを2番目の見出しへ
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 1 {
+		t.Errorf("Expected sidebar cursor 1, got %d", m.sidebar.Cursor())
+	}
+
+	// 3. 'enter' を押してジャンプ -> サイドバーは開いたまま（showSidebar == true）
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updatedM.(model)
+	if !m.showSidebar {
+		t.Errorf("Expected showSidebar to remain true after Enter")
+	}
+	if m.viewport.YOffset != m.headingLines[1] {
+		t.Errorf("Expected viewport offset %d, got %d", m.headingLines[1], m.viewport.YOffset)
+	}
+
+	// 4. 'tab' を押してフォーカス切り替え
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = updatedM.(model)
+	if m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to be false after Tab")
+	}
+	if !m.showSidebar {
+		t.Errorf("Expected showSidebar to remain true after Tab")
+	}
+
+	// 5. 'tab' をもう一度押してサイドバーフォーカス復帰
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = updatedM.(model)
+	if !m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to be true after second Tab")
 	}
 }

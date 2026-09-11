@@ -3,6 +3,8 @@ package ui
 import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
+
+	"gomad/internal/sideber"
 )
 
 type model struct {
@@ -16,6 +18,9 @@ type model struct {
 	currentStyle      string
 	showStylePicker   bool
 	showHelpModal     bool
+	showSidebar       bool
+	sidebarFocused    bool
+	sidebar           sideber.Model
 	styleIndex        int
 	availableStyles   []string
 	renderedLines     []string

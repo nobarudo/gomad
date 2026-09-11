@@ -1,6 +1,10 @@
 package ui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 func (m model) View() string {
 	if m.err != nil {
@@ -19,7 +23,21 @@ func (m model) View() string {
 	}
 
 	// 上部ガイド：シンプルに保ち「:」でキーバインド一覧を表示することを案内
-	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':スタイル変更 | ':':キーバインド | 'q':QUIT)", m.filePath, m.currentStyle)
+	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':テーマ | 't':目次 | ':':ヘルプ | 'q':QUIT)", m.filePath, m.currentStyle)
+	if m.showSidebar {
+		if m.sidebarFocused {
+			header = fmt.Sprintf("📖 %s  [目次操作中] (Tab:本文スクロール | t:目次を閉じる | ':':ヘルプ)", m.filePath)
+		} else {
+			header = fmt.Sprintf("📖 %s  [本文スクロール中] (Tab:目次操作 | t:目次を閉じる | ':':ヘルプ)", m.filePath)
+		}
+	}
+
+	var body string
+	if m.showSidebar {
+		body = lipgloss.JoinHorizontal(lipgloss.Top, m.sidebar.View(), m.viewport.View())
+	} else {
+		body = m.viewport.View()
+	}
 
 	var footer string
 	if m.showSearchInput {
@@ -37,5 +55,5 @@ func (m model) View() string {
 		footer = fmt.Sprintf(" Scroll: %3.f%%%s", scrollPct, searchStatus)
 	}
 
-	return fmt.Sprintf("%s\n%s\n%s", header, m.viewport.View(), footer)
+	return fmt.Sprintf("%s\n%s\n%s", header, body, footer)
 }

@@ -6,6 +6,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"gomad/internal/sideber"
 )
 
 // Run はUIを初期化してプログラムを開始します
@@ -38,6 +40,7 @@ func Run(filePath string, style string) error {
 		availableStyles: styles,
 		styleIndex:      initialIndex,
 		searchInput:     ti,
+		sidebar:         sideber.New(),
 	}
 
 	p := tea.NewProgram(

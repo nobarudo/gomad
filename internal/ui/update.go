@@ -64,6 +64,79 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// --- 目次サイドバー表示中の操作 ---
+		if m.showSidebar {
+			// Tab キーで目次サイドバーと本文の操作フォーカスを切り替え
+			if msg.String() == "tab" {
+				m.sidebarFocused = !m.sidebarFocused
+				m.sidebar.SetFocused(m.sidebarFocused)
+				return m, nil
+			}
+
+			// サイドバーにフォーカスがある時の操作
+			if m.sidebarFocused {
+				switch msg.String() {
+				case "esc", "t", "q":
+					m.showSidebar = false
+					m.sidebarFocused = false
+					m.sidebar.SetFocused(false)
+					m.calculateLayout()
+					if err := m.renderContent(); err != nil {
+						m.err = err
+						return m, tea.Quit
+					}
+					return m, nil
+
+				case "j", "down":
+					m.sidebar.MoveDown()
+					return m, nil
+
+				case "k", "up":
+					m.sidebar.MoveUp()
+					return m, nil
+
+				case "g":
+					m.sidebar.GotoTop()
+					return m, nil
+
+				case "G":
+					m.sidebar.GotoBottom()
+					return m, nil
+
+				case "d", "ctrl+d":
+					m.sidebar.HalfPageDown()
+					return m, nil
+
+				case "u", "ctrl+u":
+					m.sidebar.HalfPageUp()
+					return m, nil
+
+				case "enter":
+					// サイドバーを開いたまま、選択した見出しへ本文をジャンプスクロール
+					cursor := m.sidebar.Cursor()
+					if cursor >= 0 && cursor < len(m.headingLines) {
+						m.viewport.SetYOffset(m.headingLines[cursor])
+					}
+					return m, nil
+				}
+				return m, nil
+			}
+
+			// 本文にフォーカスがある時、't' で目次を閉じる
+			if msg.String() == "t" {
+				m.showSidebar = false
+				m.sidebarFocused = false
+				m.sidebar.SetFocused(false)
+				m.calculateLayout()
+				if err := m.renderContent(); err != nil {
+					m.err = err
+					return m, tea.Quit
+				}
+				return m, nil
+			}
+			// それ以外のキー (j/k, d/u, /, n/N 等) は後続の通常閲覧モードで処理
+		}
+
 		// --- 通常閲覧モード中の操作 ---
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -71,6 +144,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "s":
 			m.showStylePicker = true
+			return m, nil
+
+		case "t":
+			m.showSidebar = true
+			m.sidebarFocused = true
+			m.sidebar.SetFocused(true)
+			m.calculateLayout()
+			if err := m.renderContent(); err != nil {
+				m.err = err
+				return m, tea.Quit
+			}
+			// 現在の閲覧位置に近い見出しにカーソルを合わせる
+			currentY := m.viewport.YOffset
+			closestIdx := 0
+			for i, line := range m.headingLines {
+				if line <= currentY {
+					closestIdx = i
+				} else {
+					break
+				}
+			}
+			m.sidebar.SetCursor(closestIdx)
 			return m, nil
 
 		case ":":
@@ -134,17 +229,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		headerHeight := 1
-		footerHeight := 1
-		verticalMarginHeight := headerHeight + footerHeight
 
 		if !m.ready {
-			m.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
+			m.viewport = viewport.New(msg.Width, msg.Height-2)
 			m.viewport.YPosition = headerHeight
 			m.ready = true
-		} else {
-			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - verticalMarginHeight
 		}
+		m.calculateLayout()
 
 		if err := m.renderContent(); err != nil {
 			m.err = err
@@ -156,4 +247,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+// calculateLayout はサイドバーの開閉状態と画面サイズに応じてレイアウトを計算します
+func (m *model) calculateLayout() {
+	verticalMarginHeight := 2 // header(1) + footer(1)
+	contentHeight := m.height - verticalMarginHeight
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+
+	if m.showSidebar {
+		// 目次サイドバーの幅：画面幅の約30%、最小24、最大40
+		sbWidth := 30
+		if m.width < 80 {
+			sbWidth = m.width * 35 / 100
+			if sbWidth < 20 {
+				sbWidth = 20
+			}
+		} else if m.width > 120 {
+			sbWidth = 36
+		}
+
+		if m.width-sbWidth < 20 {
+			sbWidth = m.width / 2
+		}
+		vpWidth := m.width - sbWidth
+		if vpWidth < 10 {
+			vpWidth = 10
+		}
+
+		m.sidebar.SetSize(sbWidth, contentHeight)
+		m.viewport.Width = vpWidth
+		m.viewport.Height = contentHeight
+	} else {
+		m.viewport.Width = m.width
+		m.viewport.Height = contentHeight
+	}
 }
