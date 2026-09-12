@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	// -s / --style フラグを追加 (デフォルト値: tokyo-night)
-	rootCmd.Flags().StringVarP(&styleFlag, "style", "s", "tokyo-night", "Markdown color style (tokyo-night, dracula, dark, light, pink, notty)")
+	rootCmd.Flags().StringVarP(&styleFlag, "style", "s", "dark", "Markdown color style (tokyo-night, dracula, dark, light, pink, notty)")
 	// -w / --watch フラグを追加 (デフォルト値: true)
 	rootCmd.Flags().BoolVarP(&watchFlag, "watch", "w", true, "Enable auto-reload on file change")
 }
