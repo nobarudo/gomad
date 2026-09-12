@@ -30,6 +30,7 @@ func (m model) helpModalView() string {
 
 	b.WriteString("\x1b[1m[System]\x1b[0m\n")
 	b.WriteString("  s             : テーマ切り替えモーダル\n")
+	b.WriteString("  r             : ファイルを手動再読み込み (Reload)\n")
 	b.WriteString("  :             : このヘルプを表示\n")
 	b.WriteString("  q / Ctrl+c    : 終了\n\n")
 

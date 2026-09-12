@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"fmt"
+	"os"
+	"time"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,6 +38,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case fileReloadMsg:
+		if msg.event.Err != nil {
+			m.reloadStatus = "⚠️ Reload failed"
+			return m, m.waitForFileChange()
+		}
+
+		if err := m.applyNewContent(msg.event.Content); err != nil {
+			m.err = err
+			return m, tea.Quit
+		}
+
+		if !msg.event.ModTime.IsZero() {
+			m.lastReloadTime = msg.event.ModTime
+		} else {
+			m.lastReloadTime = time.Now()
+		}
+		m.reloadStatus = fmt.Sprintf("⚡ %s", m.lastReloadTime.Format("15:04:05"))
+		return m, m.waitForFileChange()
+
 	case tea.KeyMsg:
 		// --- キーバインドヘルプモーダル表示中の操作 ---
 		if m.showHelpModal {
@@ -144,6 +167,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "s":
 			m.showStylePicker = true
+			return m, nil
+
+		case "r":
+			data, err := os.ReadFile(m.filePath)
+			if err != nil {
+				m.reloadStatus = "⚠️ Read failed"
+				return m, nil
+			}
+			if err := m.applyNewContent(string(data)); err != nil {
+				m.err = err
+				return m, tea.Quit
+			}
+			m.lastReloadTime = time.Now()
+			m.reloadStatus = fmt.Sprintf("⚡ %s", m.lastReloadTime.Format("15:04:05"))
 			return m, nil
 
 		case "t":
@@ -284,4 +321,25 @@ func (m *model) calculateLayout() {
 		m.viewport.Width = m.width
 		m.viewport.Height = contentHeight
 	}
+}
+
+// applyNewContent はコンテンツを更新し、スクロール位置を適切に維持して再レンダリングします
+func (m *model) applyNewContent(newContent string) error {
+	m.content = newContent
+	oldOffset := m.viewport.YOffset
+
+	if err := m.renderContent(); err != nil {
+		return err
+	}
+
+	maxOffset := len(m.renderedLines) - m.viewport.Height
+	if maxOffset < 0 {
+		maxOffset = 0
+	}
+	if oldOffset > maxOffset {
+		m.viewport.SetYOffset(maxOffset)
+	} else {
+		m.viewport.SetYOffset(oldOffset)
+	}
+	return nil
 }

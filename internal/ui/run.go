@@ -8,10 +8,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"gomad/internal/sideber"
+	"gomad/internal/watcher"
 )
 
 // Run はUIを初期化してプログラムを開始します
-func Run(filePath string, style string) error {
+func Run(filePath string, style string, watch bool) error {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
@@ -33,6 +34,19 @@ func Run(filePath string, style string) error {
 	ti.CharLimit = 100
 	ti.Width = 40
 
+	var (
+		w            *watcher.Watcher
+		reloadStatus string
+	)
+	if watch {
+		var watchErr error
+		w, watchErr = watcher.New(filePath)
+		if watchErr == nil {
+			defer w.Close()
+			reloadStatus = "⚡ Auto-reload"
+		}
+	}
+
 	m := model{
 		filePath:        filePath,
 		content:         string(content),
@@ -41,6 +55,8 @@ func Run(filePath string, style string) error {
 		styleIndex:      initialIndex,
 		searchInput:     ti,
 		sidebar:         sideber.New(),
+		watcher:         w,
+		reloadStatus:    reloadStatus,
 	}
 
 	p := tea.NewProgram(

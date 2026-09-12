@@ -1,10 +1,13 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 
 	"gomad/internal/sideber"
+	"gomad/internal/watcher"
 )
 
 type model struct {
@@ -31,4 +34,7 @@ type model struct {
 	searchResults     []int
 	currentMatchIndex int
 	pristineLines     []string
+	watcher           *watcher.Watcher
+	reloadStatus      string
+	lastReloadTime    time.Time
 }

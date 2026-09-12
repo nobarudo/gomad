@@ -23,6 +23,9 @@ A keyboard-centric Markdown viewer for the terminal, built with Go and Bubble Te
 - **Themes & Styling**  
   Beautiful typography and syntax highlighting powered by Glamour. Switch between preset color styles interactively or set a default via command-line flags.
 
+- **Auto-Reload (Live Preview)**  
+  Automatically detects changes to the viewed Markdown file (with atomic-save handling and debouncing) and reloads content in real time while preserving your scroll position.
+
 - **In-App Keybinding Help**  
   Quick reference modal available directly within the viewer.
 
@@ -61,6 +64,7 @@ gomad <file.md>
 | Flag | Shorthand | Description | Default |
 | :--- | :--- | :--- | :--- |
 | `--style` | `-s` | Markdown color theme (`tokyo-night`, `dracula`, `dark`, `light`, `pink`, `notty`) | `tokyo-night` |
+| `--watch` | `-w` | Enable auto-reload on file change | `true` |
 | `--help` | `-h` | Display help information | |
 
 ---
@@ -106,6 +110,7 @@ gomad <file.md>
 
 | Key | Description |
 | :--- | :--- |
+| `r` | Manually reload file from disk |
 | `s` | Open theme picker modal |
 | `:` | Show keybindings help modal |
 | `q` / `Ctrl+c` | Quit the viewer |

@@ -1,11 +1,16 @@
 package ui
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"gomad/internal/watcher"
 )
 
 func TestStripANSI(t *testing.T) {
@@ -277,5 +282,106 @@ func TestSidebarEnterKeepOpenAndTab(t *testing.T) {
 	m = updatedM.(model)
 	if !m.sidebarFocused {
 		t.Errorf("Expected sidebarFocused to be true after second Tab")
+	}
+}
+
+func TestFileReloadMsg(t *testing.T) {
+	initialMD := "# Heading 1\n\nInitial paragraph"
+	m := model{
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      initialMD,
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	if len(m.headingLines) != 1 {
+		t.Fatalf("Expected 1 heading, got %d", len(m.headingLines))
+	}
+
+	// 変更イベントを受信したとする
+	newMD := "# Heading 1\n\nInitial paragraph\n\n## Heading 2\n\nNew paragraph"
+	reloadMsg := fileReloadMsg{
+		event: watcher.Event{
+			Path:    "dummy.md",
+			Content: newMD,
+			ModTime: time.Now(),
+		},
+	}
+
+	updatedM, _ := m.Update(reloadMsg)
+	m = updatedM.(model)
+
+	if m.content != newMD {
+		t.Errorf("Expected updated content, got %q", m.content)
+	}
+	if len(m.headingLines) != 2 {
+		t.Errorf("Expected 2 headings after reload, got %d", len(m.headingLines))
+	}
+	if !strings.Contains(m.reloadStatus, "⚡") {
+		t.Errorf("Expected reloadStatus to contain '⚡', got %q", m.reloadStatus)
+	}
+}
+
+func TestManualReloadKey(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.md")
+
+	if err := os.WriteFile(testFile, []byte("# Initial"), 0644); err != nil {
+		t.Fatalf("Failed to write initial file: %v", err)
+	}
+
+	m := model{
+		filePath:     testFile,
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      "# Initial",
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	// ファイルの内容を更新
+	if err := os.WriteFile(testFile, []byte("# Updated manually"), 0644); err != nil {
+		t.Fatalf("Failed to write updated file: %v", err)
+	}
+
+	// 'r' キーを押す
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	m = updatedM.(model)
+
+	if !strings.Contains(m.content, "Updated manually") {
+		t.Errorf("Expected content to contain 'Updated manually', got %q", m.content)
+	}
+	if !strings.Contains(m.reloadStatus, "⚡") {
+		t.Errorf("Expected reloadStatus to contain '⚡', got %q", m.reloadStatus)
+	}
+}
+
+func TestAutoReloadView(t *testing.T) {
+	m := model{
+		filePath:     "test.md",
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      "# Test",
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+		reloadStatus: "⚡ 12:34:56",
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "'r':リロード") {
+		t.Errorf("Expected header to contain ''r':リロード', got: %s", view)
+	}
+	if !strings.Contains(view, "⚡ 12:34:56") {
+		t.Errorf("Expected footer to contain '⚡ 12:34:56', got: %s", view)
 	}
 }
