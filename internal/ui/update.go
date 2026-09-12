@@ -110,6 +110,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 
+				case "l", "right":
+					m.sidebarFocused = false
+					m.sidebar.SetFocused(false)
+					return m, nil
+
 				case "j", "down":
 					m.sidebar.MoveDown()
 					return m, nil
@@ -142,6 +147,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				}
+				return m, nil
+			}
+
+			// 本文にフォーカスがある時、'h' または 'left' で目次サイドバーにフォーカスを移動
+			if msg.String() == "h" || msg.String() == "left" {
+				m.sidebarFocused = true
+				m.sidebar.SetFocused(true)
 				return m, nil
 			}
 

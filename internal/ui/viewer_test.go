@@ -285,6 +285,70 @@ func TestSidebarEnterKeepOpenAndTab(t *testing.T) {
 	}
 }
 
+func TestSidebarFocusSwitchingHL(t *testing.T) {
+	m := model{
+		width:        100,
+		height:       20,
+		ready:        true,
+		content:      "# Heading 1\n\nContent",
+		currentStyle: "dark",
+		viewport:     viewport.New(100, 18),
+	}
+
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	// 1. 't' キーで目次サイドバーを開く
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updatedM.(model)
+	if !m.showSidebar || !m.sidebarFocused {
+		t.Fatalf("Expected sidebar open and focused")
+	}
+
+	// 2. 'l' キーで本文（右）へフォーカス移動
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	m = updatedM.(model)
+	if m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to be false after 'l'")
+	}
+
+	// 3. 本文にいる状態で 'l' を押しても右端なので本文のまま
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	m = updatedM.(model)
+	if m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to remain false after redundant 'l'")
+	}
+
+	// 4. 'h' キーでサイドバー（左）へフォーカス移動
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	m = updatedM.(model)
+	if !m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to be true after 'h'")
+	}
+
+	// 5. サイドバーにいる状態で 'h' を押しても左端なのでサイドバーのまま
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	m = updatedM.(model)
+	if !m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to remain true after redundant 'h'")
+	}
+
+	// 6. 矢印キー 'right' で本文へ移動
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
+	m = updatedM.(model)
+	if m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to be false after 'right'")
+	}
+
+	// 7. 矢印キー 'left' でサイドバーへ移動
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	m = updatedM.(model)
+	if !m.sidebarFocused {
+		t.Errorf("Expected sidebarFocused to be true after 'left'")
+	}
+}
+
 func TestFileReloadMsg(t *testing.T) {
 	initialMD := "# Heading 1\n\nInitial paragraph"
 	m := model{

@@ -26,9 +26,9 @@ func (m model) View() string {
 	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':テーマ | 't':目次 | 'r':リロード | ':':ヘルプ | 'q':QUIT)", m.filePath, m.currentStyle)
 	if m.showSidebar {
 		if m.sidebarFocused {
-			header = fmt.Sprintf("📖 %s  [目次操作中] (Tab:本文スクロール | t:目次を閉じる | ':':ヘルプ)", m.filePath)
+			header = fmt.Sprintf("📖 %s  [目次操作中] (l/Tab:本文スクロール | t:目次を閉じる | ':':ヘルプ)", m.filePath)
 		} else {
-			header = fmt.Sprintf("📖 %s  [本文スクロール中] (Tab:目次操作 | t:目次を閉じる | ':':ヘルプ)", m.filePath)
+			header = fmt.Sprintf("📖 %s  [本文スクロール中] (h/Tab:目次操作 | t:目次を閉じる | ':':ヘルプ)", m.filePath)
 		}
 	}
 

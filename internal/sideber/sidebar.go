@@ -274,17 +274,17 @@ func (m Model) View() string {
 	var guide string
 	if m.focused {
 		if contentWidth >= 28 {
-			guide = "[j/k:移動 Enter:飛ぶ Tab:本文]"
+			guide = "[j/k:移動 Enter:飛ぶ l:本文]"
 		} else if contentWidth >= 20 {
-			guide = "[j/k Enter Tab:本文]"
+			guide = "[j/k Enter l:本文]"
 		} else {
-			guide = "[Enter Tab]"
+			guide = "[Enter l:本文]"
 		}
 	} else {
 		if contentWidth >= 20 {
-			guide = "[Tab:目次操作 t:閉じる]"
+			guide = "[h:目次操作 t:閉じる]"
 		} else {
-			guide = "[Tab:目次]"
+			guide = "[h:目次]"
 		}
 	}
 	lines = append(lines, footerStyle.Render(truncateString(guide, contentWidth)))
