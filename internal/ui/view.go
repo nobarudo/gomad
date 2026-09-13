@@ -23,7 +23,11 @@ func (m model) View() string {
 	}
 
 	// 上部ガイド：シンプルに保ち「:」でキーバインド一覧を表示することを案内
-	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':テーマ | 't':目次 | 'r':リロード | ':':ヘルプ | 'q':QUIT)", m.filePath, m.currentStyle)
+	reloadGuide := " | 'r':リロード"
+	if m.isStdin {
+		reloadGuide = ""
+	}
+	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':テーマ | 't':目次%s | ':':ヘルプ | 'q':QUIT)", m.filePath, m.currentStyle, reloadGuide)
 	if m.showSidebar {
 		if m.sidebarFocused {
 			header = fmt.Sprintf("📖 %s  [目次操作中] (l/Tab:本文スクロール | t:目次を閉じる | ':':ヘルプ)", m.filePath)

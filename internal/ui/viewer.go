@@ -13,6 +13,7 @@ import (
 type model struct {
 	filePath          string
 	content           string
+	isStdin           bool
 	viewport          viewport.Model
 	ready             bool
 	err               error

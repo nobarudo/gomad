@@ -449,3 +449,48 @@ func TestAutoReloadView(t *testing.T) {
 		t.Errorf("Expected footer to contain '⚡ 12:34:56', got: %s", view)
 	}
 }
+
+func TestStdinModelView(t *testing.T) {
+	m := model{
+		filePath:     "(stdin)",
+		isStdin:      true,
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      "# Stdin Content",
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "(stdin)") {
+		t.Errorf("Expected header to contain '(stdin)', got: %s", view)
+	}
+	if strings.Contains(view, "'r':リロード") {
+		t.Errorf("Expected header NOT to contain ''r':リロード' for stdin, got: %s", view)
+	}
+}
+
+func TestStdinManualReloadIgnored(t *testing.T) {
+	m := model{
+		filePath:     "(stdin)",
+		isStdin:      true,
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      "# Stdin Content",
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+
+	// 'r' キーを押しても何も変化しない
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	m = updatedM.(model)
+
+	if m.content != "# Stdin Content" {
+		t.Errorf("Expected content to remain unchanged, got %q", m.content)
+	}
+	if m.reloadStatus != "" {
+		t.Errorf("Expected reloadStatus to remain empty, got %q", m.reloadStatus)
+	}
+}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -16,12 +17,31 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "gomad <file.md>",
+	Use:   "gomad [file.md]",
 	Short: "A simple terminal Markdown viewer",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		filePath := args[0]
-		return ui.Run(filePath, styleFlag, watchFlag)
+		if len(args) > 0 && args[0] != "-" {
+			filePath := args[0]
+			return ui.RunFile(filePath, styleFlag, watchFlag)
+		}
+
+		// 標準入力がパイプであるか確認
+		stat, err := os.Stdin.Stat()
+		if err != nil {
+			return err
+		}
+		// パイプでなく端末からの直接入力の場合（引数なしで実行された場合）
+		if (stat.Mode()&os.ModeCharDevice) != 0 && len(args) == 0 {
+			return cmd.Help()
+		}
+
+		content, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read from standard input: %w", err)
+		}
+
+		return ui.RunStdin(string(content), styleFlag)
 	},
 }
 

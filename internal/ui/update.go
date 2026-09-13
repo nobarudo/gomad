@@ -182,6 +182,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "r":
+			if m.isStdin {
+				return m, nil
+			}
 			data, err := os.ReadFile(m.filePath)
 			if err != nil {
 				m.reloadStatus = "⚠️ Read failed"

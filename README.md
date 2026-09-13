@@ -59,7 +59,12 @@ go build -o gomad .
 ## Usage
 
 ```bash
+# View a local Markdown file
 gomad <file.md>
+
+# Read from standard input (pipe)
+cat <file.md> | gomad
+curl -s https://raw.githubusercontent.com/.../README.md | gomad
 ```
 
 ### Options
