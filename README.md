@@ -15,7 +15,7 @@ A keyboard-centric Markdown viewer for the terminal, built with Go and Bubble Te
   A collapsible sidebar displaying document headings hierarchically indented according to their level. Jump directly to sections while keeping the table of contents open.
 
 - **Split-View Focus Switching**  
-  Toggle focus between the sidebar and the main content using `Tab` to read and navigate concurrently.
+  Toggle focus between the sidebar and the main content using `h` / `l` or `Tab` to read and navigate concurrently.
 
 - **Incremental Search**  
   Quickly search across documents with visual match counts, highlight navigation, and ANSI-safe pattern matching.
@@ -37,18 +37,21 @@ A keyboard-centric Markdown viewer for the terminal, built with Go and Bubble Te
 
 - Go 1.22 or later
 
+### Using `go install` (Recommended)
+
+```bash
+go install github.com/nobarudo/gomad@latest
+```
+
+> [!NOTE]
+> Make sure `$(go env GOPATH)/bin` (typically `~/go/bin`) is included in your system's `PATH`.
+
 ### Building from Source
 
 ```bash
 git clone https://github.com/nobarudo/gomad.git
 cd gomad
 go build -o gomad .
-```
-
-To make it accessible system-wide:
-
-```bash
-go install
 ```
 
 ---
@@ -93,7 +96,7 @@ gomad <file.md>
 | `t` | Toggle table of contents sidebar |
 | `j` / `k` | Move selection up / down in TOC |
 | `Enter` | Jump to the selected heading (keeps sidebar open) |
-| `Tab` | Switch focus between sidebar and document content |
+| `h` / `l` / `Tab` | Switch focus between sidebar and document content |
 | `Esc` / `t` / `q` | Close table of contents |
 
 ### Search
