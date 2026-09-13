@@ -6,8 +6,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 
-	"gomad/internal/sideber"
-	"gomad/internal/watcher"
+	"github.com/nobarudo/gomad/internal/sideber"
+	"github.com/nobarudo/gomad/internal/watcher"
 )
 
 type model struct {

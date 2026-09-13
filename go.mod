@@ -1,4 +1,4 @@
-module gomad
+module github.com/nobarudo/gomad
 
 go 1.26.3
 

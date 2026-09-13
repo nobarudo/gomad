@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"gomad/internal/sideber"
+	"github.com/nobarudo/gomad/internal/sideber"
 )
 
 // Markdownの見出し位置（行番号）を解析・保持する

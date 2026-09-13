@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"gomad/internal/sideber"
-	"gomad/internal/watcher"
+	"github.com/nobarudo/gomad/internal/sideber"
+	"github.com/nobarudo/gomad/internal/watcher"
 )
 
 // Run はUIを初期化してプログラムを開始します

@@ -3,7 +3,7 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"gomad/internal/watcher"
+	"github.com/nobarudo/gomad/internal/watcher"
 )
 
 type fileReloadMsg struct {

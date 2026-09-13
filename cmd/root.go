@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gomad/internal/ui" // ※ ご自身のモジュール名に合わせて変更してください
+	"github.com/nobarudo/gomad/internal/ui"
 )
 
 // ↓ フラグ変数定義
@@ -16,7 +16,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "mdview <file.md>",
+	Use:   "gomad <file.md>",
 	Short: "A simple terminal Markdown viewer",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

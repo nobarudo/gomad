@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"gomad/internal/watcher"
+	"github.com/nobarudo/gomad/internal/watcher"
 )
 
 func TestStripANSI(t *testing.T) {
