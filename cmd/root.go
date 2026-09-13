@@ -17,9 +17,10 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "gomad [file.md]",
-	Short: "A simple terminal Markdown viewer",
-	Args:  cobra.MaximumNArgs(1),
+	Use:     "gomad [file.md]",
+	Short:   "A simple terminal Markdown viewer",
+	Version: "0.1.1",
+	Args:    cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 && args[0] != "-" {
 			filePath := args[0]
