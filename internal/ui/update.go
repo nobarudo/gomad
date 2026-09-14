@@ -93,6 +93,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "tab" {
 				m.sidebarFocused = !m.sidebarFocused
 				m.sidebar.SetFocused(m.sidebarFocused)
+				if !m.sidebarFocused {
+					m.syncSidebarCursor()
+				}
 				return m, nil
 			}
 
@@ -113,6 +116,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "l", "right":
 					m.sidebarFocused = false
 					m.sidebar.SetFocused(false)
+					m.syncSidebarCursor()
 					return m, nil
 
 				case "j", "down":
@@ -207,17 +211,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.err = err
 				return m, tea.Quit
 			}
-			// 現在の閲覧位置に近い見出しにカーソルを合わせる
-			currentY := m.viewport.YOffset
-			closestIdx := 0
-			for i, line := range m.headingLines {
-				if line <= currentY {
-					closestIdx = i
-				} else {
-					break
-				}
-			}
-			m.sidebar.SetCursor(closestIdx)
+			m.syncSidebarCursor()
 			return m, nil
 
 		case ":":
@@ -298,6 +292,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
+	if m.showSidebar && !m.sidebarFocused {
+		m.syncSidebarCursor()
+	}
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -357,4 +355,32 @@ func (m *model) applyNewContent(newContent string) error {
 		m.viewport.SetYOffset(oldOffset)
 	}
 	return nil
+}
+
+// syncSidebarCursor は本文の現在スクロール位置に合わせて目次のカーソルを同期します
+func (m *model) syncSidebarCursor() {
+	if len(m.headingLines) == 0 {
+		return
+	}
+	currentY := m.viewport.YOffset
+	closestIdx := 0
+	for i, line := range m.headingLines {
+		if line <= currentY {
+			closestIdx = i
+		} else {
+			break
+		}
+	}
+
+	// ドキュメント最下部に到達している場合、画面内に見えている最も進んだ見出しに合わせる
+	if m.viewport.AtBottom() {
+		for i := len(m.headingLines) - 1; i >= 0; i-- {
+			if m.headingLines[i] < currentY+m.viewport.Height {
+				closestIdx = i
+				break
+			}
+		}
+	}
+
+	m.sidebar.SetCursor(closestIdx)
 }

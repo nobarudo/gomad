@@ -494,3 +494,110 @@ func TestStdinManualReloadIgnored(t *testing.T) {
 		t.Errorf("Expected reloadStatus to remain empty, got %q", m.reloadStatus)
 	}
 }
+
+func TestSidebarSyncWithContentScroll(t *testing.T) {
+	// 3つの見出しを持つドキュメント
+	var doc strings.Builder
+	doc.WriteString("# Section 1\n\n")
+	for i := 0; i < 15; i++ {
+		doc.WriteString("Paragraph text in section 1.\n\n")
+	}
+	doc.WriteString("## Section 2\n\n")
+	for i := 0; i < 15; i++ {
+		doc.WriteString("Paragraph text in section 2.\n\n")
+	}
+	doc.WriteString("### Section 3\n\n")
+	for i := 0; i < 15; i++ {
+		doc.WriteString("Paragraph text in section 3.\n\n")
+	}
+
+	m := model{
+		width:        100,
+		height:       15,
+		ready:        true,
+		content:      doc.String(),
+		currentStyle: "dark",
+		viewport:     viewport.New(100, 13),
+	}
+
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	if len(m.headingLines) != 3 {
+		t.Fatalf("Expected 3 heading lines, got %d", len(m.headingLines))
+	}
+
+	// 1. 't' キーでサイドバーを開く
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 0 {
+		t.Errorf("Expected initial sidebar cursor 0, got %d", m.sidebar.Cursor())
+	}
+
+	// 2. 'l' キーで本文にフォーカスを移動
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	m = updatedM.(model)
+	if m.sidebarFocused {
+		t.Fatalf("Expected focus in main content")
+	}
+
+	// 3. ']' (nextHeading) キーで Section 1 (line 1) へジャンプ
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 0 {
+		t.Errorf("Expected sidebar cursor 0 after jumping to section 1, got %d", m.sidebar.Cursor())
+	}
+
+	// 4. ']' キーで次の見出し (Section 2, line 33) へジャンプ
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 1 {
+		t.Errorf("Expected sidebar cursor 1 after jumping to section 2, got %d", m.sidebar.Cursor())
+	}
+
+	// 5. ']' キーでさらに次の見出し (Section 3, line 65) へジャンプ
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 2 {
+		t.Errorf("Expected sidebar cursor 2 after jumping to section 3, got %d", m.sidebar.Cursor())
+	}
+
+	// 6. 'G' キーで最下部に移動 -> Section 3 (cursor 2) に同期される
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'G'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 2 {
+		t.Errorf("Expected sidebar cursor 2 after GotoBottom, got %d", m.sidebar.Cursor())
+	}
+
+	// 7. 'g' キーで先頭に戻る
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 0 {
+		t.Errorf("Expected sidebar cursor 0 after goto top, got %d", m.sidebar.Cursor())
+	}
+
+	// 8. 'h' キーでサイドバーにフォーカスを戻し、手動でカーソルを動かす
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	m = updatedM.(model)
+	if !m.sidebarFocused {
+		t.Fatalf("Expected focus in sidebar")
+	}
+
+	// サイドバーフォーカス時に 'j' でカーソルを動かす -> 本文スクロールによる上書きは発生しない
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m = updatedM.(model)
+	if m.sidebar.Cursor() != 1 {
+		t.Errorf("Expected sidebar cursor 1 after manual 'j', got %d", m.sidebar.Cursor())
+	}
+
+	// 9. サイドバーから 'l' で本文に戻ると、本文の現在位置 (先頭: line 0) に再同期される
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	m = updatedM.(model)
+	if m.sidebarFocused {
+		t.Fatalf("Expected focus in main content")
+	}
+	if m.sidebar.Cursor() != 0 {
+		t.Errorf("Expected sidebar cursor to resync to 0 after returning to content, got %d", m.sidebar.Cursor())
+	}
+}

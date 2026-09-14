@@ -12,7 +12,7 @@ A keyboard-centric Markdown viewer for the terminal, built with Go and Bubble Te
   Smooth scrolling and jumping between paragraphs or headings using familiar Vim keybindings.
 
 - **Interactive Table of Contents (Sidebar)**  
-  A collapsible sidebar displaying document headings hierarchically indented according to their level. Jump directly to sections while keeping the table of contents open.
+  A collapsible sidebar displaying document headings hierarchically indented according to their level. The active section automatically tracks and scrolls with your reading position in the main content. Jump directly to sections while keeping the table of contents open.
 
 - **Split-View Focus Switching**  
   Toggle focus between the sidebar and the main content using `h` / `l` or `Tab` to read and navigate concurrently.
