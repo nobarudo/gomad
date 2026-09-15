@@ -71,7 +71,7 @@ curl -s https://raw.githubusercontent.com/.../README.md | gomad
 
 | Flag | Shorthand | Description | Default |
 | :--- | :--- | :--- | :--- |
-| `--style` | `-s` | Markdown color theme (`tokyo-night`, `dracula`, `dark`, `light`, `pink`, `notty`) | `tokyo-night` |
+| `--style` | `-s` | Markdown color theme (`tokyo-night`, `dracula`, `dark`, `light`, `pink`, `cyan`, `notty`) | `dark` |
 | `--watch` | `-w` | Enable auto-reload on file change | `true` |
 | `--help` | `-h` | Display help information | |
 

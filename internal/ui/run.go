@@ -10,6 +10,7 @@ import (
 
 	"github.com/nobarudo/gomad/internal/sideber"
 	"github.com/nobarudo/gomad/internal/watcher"
+	"github.com/nobarudo/gomad/themes"
 )
 
 // openTTY はパイプ入力時にキーボード入力を受け付けるためのTTYデバイスを開きます
@@ -32,7 +33,7 @@ func RunFile(filePath string, style string, watch bool) error {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	styles := []string{"tokyo-night", "dracula", "dark", "light", "pink", "notty"}
+	styles := themes.AvailableStyles()
 
 	initialIndex := 0
 	for i, s := range styles {
@@ -85,7 +86,7 @@ func RunStdin(content string, style string) error {
 	}
 	defer tty.Close()
 
-	styles := []string{"tokyo-night", "dracula", "dark", "light", "pink", "notty"}
+	styles := themes.AvailableStyles()
 
 	initialIndex := 0
 	for i, s := range styles {

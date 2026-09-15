@@ -5,12 +5,21 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/glamour"
+
+	"github.com/nobarudo/gomad/themes"
 )
 
 // Markdownコンテンツを指定スタイルでGlamourレンダリングする
 func (m *model) renderContent() error {
+	var styleOpt glamour.TermRendererOption
+	if jsonBytes, ok := themes.GetThemeJSON(m.currentStyle); ok {
+		styleOpt = glamour.WithStylesFromJSONBytes(jsonBytes)
+	} else {
+		styleOpt = glamour.WithStandardStyle(m.currentStyle)
+	}
+
 	renderer, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle(m.currentStyle),
+		styleOpt,
 		glamour.WithWordWrap(m.viewport.Width),
 	)
 	if err != nil {

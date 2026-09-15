@@ -601,3 +601,38 @@ func TestSidebarSyncWithContentScroll(t *testing.T) {
 		t.Errorf("Expected sidebar cursor to resync to 0 after returning to content, got %d", m.sidebar.Cursor())
 	}
 }
+
+func TestCyanThemeRenderAndPicker(t *testing.T) {
+	doc := "# Title\n\n## Section 2\n\nSome paragraph with `code` and [link](https://example.com)"
+	m := model{
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      doc,
+		currentStyle: "cyan",
+		viewport:     viewport.New(80, 22),
+	}
+
+	// 1. cyan スタイルで正常にレンダリングできること
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent with cyan theme failed: %v", err)
+	}
+
+	// 2. pink レイアウト特有の見出しプレフィックス '▌' が含まれていること
+	renderedText := stripANSI(m.viewport.View())
+	if !strings.Contains(renderedText, "▌") {
+		t.Errorf("Expected rendered markdown to contain '▌' from cyan theme, got:\n%s", renderedText)
+	}
+
+	// 3. テーマ選択モーダルを開いた時、availableStyles に cyan が含まれていること
+	m.availableStyles = append([]string{"dark"}, "cyan")
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m = updatedM.(model)
+	if !m.showStylePicker {
+		t.Fatalf("Expected showStylePicker to be true after 's'")
+	}
+	pickerView := m.stylePickerView()
+	if !strings.Contains(pickerView, "cyan") {
+		t.Errorf("Expected style picker to display 'cyan', got:\n%s", pickerView)
+	}
+}

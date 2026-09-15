@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/nobarudo/gomad/internal/ui"
+	"github.com/nobarudo/gomad/themes"
 )
 
 // ↓ フラグ変数定義
@@ -47,8 +49,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	// -s / --style フラグを追加 (デフォルト値: tokyo-night)
-	rootCmd.Flags().StringVarP(&styleFlag, "style", "s", "dark", "Markdown color style (tokyo-night, dracula, dark, light, pink, notty)")
+	styleHelp := fmt.Sprintf("Markdown color style (%s)", strings.Join(themes.AvailableStyles(), ", "))
+	rootCmd.Flags().StringVarP(&styleFlag, "style", "s", "dark", styleHelp)
 	// -w / --watch フラグを追加 (デフォルト値: true)
 	rootCmd.Flags().BoolVarP(&watchFlag, "watch", "w", true, "Enable auto-reload on file change")
 }
