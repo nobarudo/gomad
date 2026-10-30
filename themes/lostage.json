@@ -1,0 +1,90 @@
+{
+  "document": {
+    "margin": 2
+  },
+  "block_quote": {
+    "indent": 1,
+    "indent_token": "│ "
+  },
+  "paragraph": {},
+  "list": {
+    "level_indent": 2
+  },
+  "heading": {
+    "block_suffix": "\n",
+    "color": "#5a9bcd",
+    "bold": true
+  },
+  "h1": {
+    "block_prefix": "\n",
+    "block_suffix": "\n"
+  },
+  "h2": {
+    "prefix": "▌ "
+  },
+  "h3": {
+    "prefix": "┃ "
+  },
+  "h4": {
+    "prefix": "│ "
+  },
+  "h5": {
+    "prefix": "┆ "
+  },
+  "h6": {
+    "prefix": "┊ ",
+    "bold": false
+  },
+  "text": {},
+  "strikethrough": {
+    "crossed_out": true
+  },
+  "emph": {
+    "italic": true
+  },
+  "strong": {
+    "bold": true
+  },
+  "hr": {
+    "color": "#a3c1e0",
+    "format": "\n──────\n"
+  },
+  "item": {
+    "block_prefix": "• "
+  },
+  "enumeration": {
+    "block_prefix": ". "
+  },
+  "task": {
+    "ticked": "[✓] ",
+    "unticked": "[ ] "
+  },
+  "link": {
+    "color": "#a3c1e0",
+    "underline": true
+  },
+  "link_text": {
+    "bold": true
+  },
+  "image": {
+    "underline": true
+  },
+  "image_text": {
+    "format": "Image: {{.text}}"
+  },
+  "code": {
+    "prefix": " ",
+    "suffix": " ",
+    "color": "#a3c1e0",
+    "background_color": "#142c4c"
+  },
+  "code_block": {},
+  "table": {},
+  "definition_list": {},
+  "definition_term": {},
+  "definition_description": {
+    "block_prefix": "\n🠶 "
+  },
+  "html_block": {},
+  "html_span": {}
+}
