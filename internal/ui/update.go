@@ -57,6 +57,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reloadStatus = fmt.Sprintf("⚡ %s", m.lastReloadTime.Format("15:04:05"))
 		return m, m.waitForFileChange()
 
+	case editorFinishedMsg:
+		if msg.err != nil {
+			m.reloadStatus = "⚠️ Editor failed"
+			return m, nil
+		}
+		data, err := os.ReadFile(m.filePath)
+		if err != nil {
+			m.reloadStatus = "⚠️ Read failed"
+			return m, nil
+		}
+		if err := m.applyNewContent(string(data)); err != nil {
+			m.err = err
+			return m, tea.Quit
+		}
+		m.lastReloadTime = time.Now()
+		m.reloadStatus = fmt.Sprintf("⚡ %s", m.lastReloadTime.Format("15:04:05"))
+		if m.showSidebar && !m.sidebarFocused {
+			m.syncSidebarCursor()
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		// --- キーバインドヘルプモーダル表示中の操作 ---
 		if m.showHelpModal {
@@ -184,6 +205,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "s":
 			m.showStylePicker = true
 			return m, nil
+
+		case "e":
+			if m.isStdin {
+				return m, nil
+			}
+			return m, m.openEditor()
 
 		case "r":
 			if m.isStdin {

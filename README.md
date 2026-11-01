@@ -118,6 +118,7 @@ curl -s https://raw.githubusercontent.com/.../README.md | gomad
 
 | Key | Description |
 | :--- | :--- |
+| `e` | Open file in external editor (`$VISUAL` / `$EDITOR` / `vi`) |
 | `r` | Manually reload file from disk |
 | `s` | Open theme picker modal |
 | `:` | Show keybindings help modal |

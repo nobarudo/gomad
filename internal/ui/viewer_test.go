@@ -636,3 +636,96 @@ func TestCyanThemeRenderAndPicker(t *testing.T) {
 		t.Errorf("Expected style picker to display 'cyan', got:\n%s", pickerView)
 	}
 }
+
+func TestResolveEditorCmd(t *testing.T) {
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
+
+	bin, args := resolveEditorCmd("sample.md")
+	if bin == "" {
+		t.Fatalf("Expected fallback editor binary, got empty")
+	}
+	if len(args) != 1 || args[0] != "sample.md" {
+		t.Errorf("Expected args [sample.md], got %v", args)
+	}
+
+	// EDITOR with flags
+	t.Setenv("EDITOR", "code --wait")
+	bin, args = resolveEditorCmd("sample.md")
+	if bin != "code" {
+		t.Errorf("Expected bin 'code', got %q", bin)
+	}
+	if len(args) != 2 || args[0] != "--wait" || args[1] != "sample.md" {
+		t.Errorf("Expected args [--wait sample.md], got %v", args)
+	}
+
+	// VISUAL takes precedence over EDITOR
+	t.Setenv("VISUAL", "nvim")
+	bin, args = resolveEditorCmd("sample.md")
+	if bin != "nvim" {
+		t.Errorf("Expected VISUAL 'nvim' to take precedence, got %q", bin)
+	}
+	if len(args) != 1 || args[0] != "sample.md" {
+		t.Errorf("Expected args [sample.md], got %v", args)
+	}
+}
+
+func TestOpenEditorKeyAndFinishedMsg(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.md")
+
+	if err := os.WriteFile(testFile, []byte("# Before Edit"), 0644); err != nil {
+		t.Fatalf("Failed to write initial file: %v", err)
+	}
+
+	m := model{
+		filePath:     testFile,
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      "# Before Edit",
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	// 1. 'e' キーを押すと外部エディタ起動の tea.Cmd が返る
+	updatedM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	m = updatedM.(model)
+	if cmd == nil {
+		t.Fatalf("Expected non-nil tea.Cmd when pressing 'e' on a file")
+	}
+
+	// 2. エディタでファイルが書き換えられて終了したと想定
+	if err := os.WriteFile(testFile, []byte("# After Edit"), 0644); err != nil {
+		t.Fatalf("Failed to write updated file: %v", err)
+	}
+
+	updatedM, _ = m.Update(editorFinishedMsg{err: nil})
+	m = updatedM.(model)
+
+	if !strings.Contains(m.content, "After Edit") {
+		t.Errorf("Expected content to be reloaded with 'After Edit', got %q", m.content)
+	}
+	if !strings.Contains(m.reloadStatus, "⚡") {
+		t.Errorf("Expected reloadStatus to contain '⚡', got %q", m.reloadStatus)
+	}
+
+	// 3. Stdin モードでは 'e' キーは無視される
+	stdinModel := model{
+		filePath:     "(stdin)",
+		isStdin:      true,
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      "# Stdin",
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+	_, stdinCmd := stdinModel.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	if stdinCmd != nil {
+		t.Errorf("Expected nil cmd when pressing 'e' in stdin mode")
+	}
+}

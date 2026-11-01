@@ -23,7 +23,7 @@ func (m model) View() string {
 	}
 
 	// 上部ガイド：シンプルに保ち「:」でキーバインド一覧を表示することを案内
-	reloadGuide := " | 'r':リロード"
+	reloadGuide := " | 'e':編集 | 'r':リロード"
 	if m.isStdin {
 		reloadGuide = ""
 	}
