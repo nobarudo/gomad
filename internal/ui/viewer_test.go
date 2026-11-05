@@ -729,3 +729,96 @@ func TestOpenEditorKeyAndFinishedMsg(t *testing.T) {
 		t.Errorf("Expected nil cmd when pressing 'e' in stdin mode")
 	}
 }
+
+func TestLinkFocusCycleAndLocalFileNavigation(t *testing.T) {
+	tempDir := t.TempDir()
+	firstFile := filepath.Join(tempDir, "first.md")
+	secondFile := filepath.Join(tempDir, "second.md")
+
+	firstMD := "# First Doc\n\nSee [Second Doc](second.md) or [Example](https://example.com) and `inline [ignored](ignore.md)`.\n\n```md\n[codeblock](ignored.md)\n```\n"
+	secondMD := "# Second Doc\n\nWelcome to the second document!"
+
+	if err := os.WriteFile(firstFile, []byte(firstMD), 0644); err != nil {
+		t.Fatalf("Failed to write first file: %v", err)
+	}
+	if err := os.WriteFile(secondFile, []byte(secondMD), 0644); err != nil {
+		t.Fatalf("Failed to write second file: %v", err)
+	}
+
+	m := model{
+		filePath:     firstFile,
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      firstMD,
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	// コードブロックとインラインコード内のリンクは除外され、2件だけ抽出されること
+	if len(m.links) != 2 {
+		t.Fatalf("Expected 2 links, got %d: %+v", len(m.links), m.links)
+	}
+	if m.links[0].url != "second.md" {
+		t.Errorf("Expected link 0 url 'second.md', got %q", m.links[0].url)
+	}
+	if m.links[1].url != "https://example.com" {
+		t.Errorf("Expected link 1 url 'https://example.com', got %q", m.links[1].url)
+	}
+
+	// 1. 初回の 'o' キーで画面内の最初のリンク (index 0) がハイライトされる
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	m = updatedM.(model)
+	if !m.linkFocusActive {
+		t.Fatalf("Expected linkFocusActive to be true after pressing 'o'")
+	}
+	if m.currentLinkIndex != 0 {
+		t.Errorf("Expected currentLinkIndex 0, got %d", m.currentLinkIndex)
+	}
+	if !strings.Contains(m.View(), "🔗 (1/2) → second.md") {
+		t.Errorf("Expected footer to show active link 1/2, got:\n%s", m.View())
+	}
+
+	// 2. もう一度 'o' キーを押すと次のリンク (index 1) へ移動する
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	m = updatedM.(model)
+	if m.currentLinkIndex != 1 {
+		t.Errorf("Expected currentLinkIndex 1, got %d", m.currentLinkIndex)
+	}
+	if !strings.Contains(m.View(), "🔗 (2/2) → https://example.com") {
+		t.Errorf("Expected footer to show active link 2/2, got:\n%s", m.View())
+	}
+
+	// 3. 'O' キーで前のリンク (index 0) に戻る
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'O'}})
+	m = updatedM.(model)
+	if m.currentLinkIndex != 0 {
+		t.Errorf("Expected currentLinkIndex 0 after 'O', got %d", m.currentLinkIndex)
+	}
+
+	// 4. 'Enter' キーでローカルの second.md へ遷移する
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updatedM.(model)
+	if m.filePath != secondFile {
+		t.Errorf("Expected filePath %q, got %q", secondFile, m.filePath)
+	}
+	if !strings.Contains(m.content, "Welcome to the second document!") {
+		t.Errorf("Expected second document content, got %q", m.content)
+	}
+	if len(m.history) != 1 {
+		t.Fatalf("Expected 1 history item, got %d", len(m.history))
+	}
+
+	// 5. 'Backspace' キーで元の first.md に戻る
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	m = updatedM.(model)
+	if m.filePath != firstFile {
+		t.Errorf("Expected to navigate back to %q, got %q", firstFile, m.filePath)
+	}
+	if len(m.history) != 0 {
+		t.Errorf("Expected history to be empty after navigating back, got %d", len(m.history))
+	}
+}

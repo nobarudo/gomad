@@ -22,7 +22,9 @@ func (m model) helpModalView() string {
 	b.WriteString("  h / l         : 目次 / 本文のフォーカス移動\n")
 	b.WriteString("  Tab           : 目次と本文の操作フォーカス切り替え\n")
 	b.WriteString("  { / }         : 前 / 次の段落（空行）へジャンプ\n")
-	b.WriteString("  [ / ]         : 前 / 次の見出しへジャンプ\n\n")
+	b.WriteString("  [ / ]         : 前 / 次の見出しへジャンプ\n")
+	b.WriteString("  o / O         : 次 / 前のリンクを選択 (Enterで開く)\n")
+	b.WriteString("  BS / Ctrl+o   : リンク遷移前のファイルへ戻る\n\n")
 
 	b.WriteString("\x1b[1m[Search]\x1b[0m\n")
 	b.WriteString("  /             : 検索ワード入力\n")

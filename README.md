@@ -93,6 +93,9 @@ curl -s https://raw.githubusercontent.com/.../README.md | gomad
 | `G` | Jump to the end of document |
 | `]` / `[` | Jump to next / previous heading |
 | `}` / `{` | Jump to next / previous paragraph |
+| `o` / `O` | Focus next / previous link in document |
+| `Enter` | Open focused link (browser / local Markdown / anchor) |
+| `Backspace` / `Ctrl+o` | Navigate back to previous Markdown file |
 
 ### Table of Contents (Sidebar)
 

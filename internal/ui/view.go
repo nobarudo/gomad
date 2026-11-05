@@ -56,11 +56,22 @@ func (m model) View() string {
 				searchStatus = fmt.Sprintf(" | 🔍 %q (No matches) [Esc: Clear]", m.searchQuery)
 			}
 		}
+		linkStatus := ""
+		if m.linkFocusActive && len(m.links) > 0 && m.currentLinkIndex >= 0 && m.currentLinkIndex < len(m.links) {
+			activeLink := m.links[m.currentLinkIndex]
+			backHint := ""
+			if len(m.history) > 0 {
+				backHint = ", BS: Back"
+			}
+			linkStatus = fmt.Sprintf(" | 🔗 (%d/%d) → %s [o/O: Next/Prev, Enter: Open%s, Esc: Clear]", m.currentLinkIndex+1, len(m.links), activeLink.url, backHint)
+		} else if len(m.history) > 0 {
+			linkStatus = " | [BS/Ctrl+o: 前のファイルへ戻る]"
+		}
 		reloadStatus := ""
 		if m.reloadStatus != "" {
 			reloadStatus = " | " + m.reloadStatus
 		}
-		footer = fmt.Sprintf(" Scroll: %3.f%%%s%s", scrollPct, reloadStatus, searchStatus)
+		footer = fmt.Sprintf(" Scroll: %3.f%%%s%s%s", scrollPct, reloadStatus, searchStatus, linkStatus)
 	}
 
 	return fmt.Sprintf("%s\n%s\n%s", header, body, footer)

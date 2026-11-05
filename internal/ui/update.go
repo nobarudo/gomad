@@ -78,6 +78,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case browserOpenedMsg:
+		if msg.err != nil {
+			m.reloadStatus = "⚠️ Browser launch failed"
+		} else {
+			m.reloadStatus = "🌐 Opened in browser"
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		// --- キーバインドヘルプモーダル表示中の操作 ---
 		if m.showHelpModal {
@@ -263,7 +271,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.updateHighlight()
 			}
 
+		case "o":
+			m.focusNextLink()
+			return m, nil
+
+		case "O":
+			m.focusPrevLink()
+			return m, nil
+
+		case "enter":
+			if m.linkFocusActive {
+				return m, m.openSelectedLink()
+			}
+
+		case "backspace", "ctrl+o":
+			if len(m.history) > 0 {
+				return m, m.navigateBack()
+			}
+
 		case "esc":
+			if m.linkFocusActive {
+				m.clearLinkFocus()
+			}
 			m.searchQuery = ""
 			m.searchResults = nil
 			m.currentMatchIndex = 0

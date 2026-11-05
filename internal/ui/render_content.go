@@ -42,6 +42,7 @@ func (m *model) renderContent() error {
 	m.pristineLines = make([]string, len(m.renderedLines))
 	copy(m.pristineLines, m.renderedLines)
 	m.updateHeadingLines()
+	m.updateLinks()
 
 	if m.searchQuery != "" {
 		m.executeSearch(m.searchQuery)

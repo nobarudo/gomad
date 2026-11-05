@@ -7,6 +7,9 @@ func (m *model) executeSearch(query string) {
 	m.searchQuery = query
 	m.searchResults = nil
 	m.currentMatchIndex = 0
+	if query != "" {
+		m.linkFocusActive = false
+	}
 
 	if query == "" {
 		if len(m.pristineLines) > 0 {

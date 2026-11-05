@@ -38,4 +38,8 @@ type model struct {
 	watcher           *watcher.Watcher
 	reloadStatus      string
 	lastReloadTime    time.Time
+	links             []linkItem
+	currentLinkIndex  int
+	linkFocusActive   bool
+	history           []historyItem
 }
