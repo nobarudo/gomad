@@ -19,7 +19,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "gomad [file.md]",
+	Use:     "gomad [file.md | directory]",
 	Short:   "A simple terminal Markdown viewer",
 	Version: "0.1.2",
 	Args:    cobra.MaximumNArgs(1),

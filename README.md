@@ -62,6 +62,10 @@ go build -o gomad .
 # View a local Markdown file
 gomad <file.md>
 
+# View Markdown files in a directory (shows file list, defaults to README.md)
+gomad <directory>
+gomad .
+
 # Read from standard input (pipe)
 cat <file.md> | gomad
 curl -s https://raw.githubusercontent.com/.../README.md | gomad
@@ -121,6 +125,7 @@ curl -s https://raw.githubusercontent.com/.../README.md | gomad
 
 | Key | Description |
 | :--- | :--- |
+| `p` | Open Markdown file picker (when launched with a directory) |
 | `e` | Open file in external editor (`$VISUAL` / `$EDITOR` / `vi`) |
 | `r` | Manually reload file from disk |
 | `s` | Open theme picker modal |

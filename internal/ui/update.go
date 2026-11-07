@@ -96,6 +96,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// --- ディレクトリ内ファイル選択モーダル表示中の操作 ---
+		if m.showFilePicker {
+			switch msg.String() {
+			case "j", "down":
+				if len(m.dirFiles) > 0 {
+					m.fileIndex = (m.fileIndex + 1) % len(m.dirFiles)
+				}
+			case "k", "up":
+				if len(m.dirFiles) > 0 {
+					m.fileIndex = (m.fileIndex - 1 + len(m.dirFiles)) % len(m.dirFiles)
+				}
+			case "g":
+				m.fileIndex = 0
+			case "G":
+				if len(m.dirFiles) > 0 {
+					m.fileIndex = len(m.dirFiles) - 1
+				}
+			case "enter":
+				return m, m.selectDirFile(m.fileIndex)
+			case "esc", "p", "q":
+				m.showFilePicker = false
+			case "ctrl+c":
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
 		// --- テーマ選択モーダル表示中の操作 ---
 		if m.showStylePicker {
 			switch msg.String() {
@@ -212,6 +239,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "s":
 			m.showStylePicker = true
+			return m, nil
+
+		case "p":
+			if len(m.dirFiles) > 0 {
+				m.showFilePicker = true
+			}
 			return m, nil
 
 		case "e":

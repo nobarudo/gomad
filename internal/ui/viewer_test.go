@@ -822,3 +822,87 @@ func TestLinkFocusCycleAndLocalFileNavigation(t *testing.T) {
 		t.Errorf("Expected history to be empty after navigating back, got %d", len(m.history))
 	}
 }
+
+func TestFindMarkdownFilesAndDirectoryPicker(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 空のディレクトリはエラーになること
+	if _, _, err := findMarkdownFiles(tempDir); err == nil {
+		t.Fatalf("Expected error when no markdown files exist in directory")
+	}
+
+	alphaFile := filepath.Join(tempDir, "alpha.md")
+	readmeFile := filepath.Join(tempDir, "README.md")
+	zetaFile := filepath.Join(tempDir, "zeta.md")
+	nonMdFile := filepath.Join(tempDir, "notes.txt")
+
+	_ = os.WriteFile(alphaFile, []byte("# Alpha"), 0644)
+	_ = os.WriteFile(readmeFile, []byte("# Project README"), 0644)
+	_ = os.WriteFile(zetaFile, []byte("# Zeta"), 0644)
+	_ = os.WriteFile(nonMdFile, []byte("plain text"), 0644)
+
+	files, readmeIdx, err := findMarkdownFiles(tempDir)
+	if err != nil {
+		t.Fatalf("findMarkdownFiles failed: %v", err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("Expected 3 markdown files, got %d: %v", len(files), files)
+	}
+	// アルファベット順で alpha.md (0), README.md (1), zeta.md (2) となり、readmeIdx は 1 になること
+	if readmeIdx != 1 || filepath.Base(files[readmeIdx]) != "README.md" {
+		t.Errorf("Expected readmeIdx 1 (README.md), got %d (%v)", readmeIdx, files)
+	}
+
+	// ディレクトリ指定起動状態のモデルを構築
+	m := model{
+		filePath:       files[readmeIdx],
+		content:        "# Project README",
+		width:          80,
+		height:         24,
+		ready:          true,
+		currentStyle:   "dark",
+		viewport:       viewport.New(80, 22),
+		dirPath:        tempDir,
+		dirFiles:       files,
+		fileIndex:      readmeIdx,
+		showFilePicker: true,
+	}
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	// 1. 起動直後はファイル一覧モーダルが表示され、README.md が初期選択されていること
+	view := m.View()
+	if !strings.Contains(view, "Select Markdown File") {
+		t.Errorf("Expected file picker modal in view, got:\n%s", view)
+	}
+	if !strings.Contains(view, "README.md (active)") {
+		t.Errorf("Expected README.md (active) in file picker modal, got:\n%s", view)
+	}
+
+	// 2. 'k' で alpha.md (index 0) を選択し、'Enter' で開く
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m = updatedM.(model)
+	if m.fileIndex != 0 {
+		t.Errorf("Expected fileIndex 0 after 'k', got %d", m.fileIndex)
+	}
+
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updatedM.(model)
+	if m.showFilePicker {
+		t.Errorf("Expected showFilePicker to be false after Enter")
+	}
+	if m.filePath != alphaFile {
+		t.Errorf("Expected filePath %q, got %q", alphaFile, m.filePath)
+	}
+	if !strings.Contains(m.content, "# Alpha") {
+		t.Errorf("Expected content '# Alpha', got %q", m.content)
+	}
+
+	// 3. 'p' キーで再度ファイル一覧モーダルを開けること
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	m = updatedM.(model)
+	if !m.showFilePicker {
+		t.Errorf("Expected showFilePicker to be true after pressing 'p'")
+	}
+}

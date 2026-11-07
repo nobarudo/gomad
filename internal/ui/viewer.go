@@ -42,4 +42,9 @@ type model struct {
 	currentLinkIndex  int
 	linkFocusActive   bool
 	history           []historyItem
+	dirPath           string
+	dirFiles          []string
+	fileIndex         int
+	showFilePicker    bool
+	watchEnabled      bool
 }

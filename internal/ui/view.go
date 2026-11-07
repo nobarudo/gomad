@@ -18,6 +18,9 @@ func (m model) View() string {
 	if m.showHelpModal {
 		return m.helpModalView()
 	}
+	if m.showFilePicker {
+		return m.filePickerView()
+	}
 	if m.showStylePicker {
 		return m.stylePickerView()
 	}
@@ -26,6 +29,9 @@ func (m model) View() string {
 	reloadGuide := " | 'e':編集 | 'r':リロード"
 	if m.isStdin {
 		reloadGuide = ""
+	}
+	if len(m.dirFiles) > 0 {
+		reloadGuide = " | 'p':一覧" + reloadGuide
 	}
 	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':テーマ | 't':目次%s | ':':ヘルプ | 'q':QUIT)", m.filePath, m.currentStyle, reloadGuide)
 	if m.showSidebar {

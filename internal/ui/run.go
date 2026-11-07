@@ -26,9 +26,34 @@ func Run(filePath string, style string, watch bool) error {
 	return RunFile(filePath, style, watch)
 }
 
-// RunFile はローカルファイルを読み込んでビューアを起動します
+// RunFile はローカルファイルまたはディレクトリを読み込んでビューアを起動します
 func RunFile(filePath string, style string, watch bool) error {
-	content, err := os.ReadFile(filePath)
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to access path: %w", err)
+	}
+
+	var (
+		targetFile     = filePath
+		dirPath        string
+		dirFiles       []string
+		fileIndex      int
+		showFilePicker bool
+	)
+
+	if info.IsDir() {
+		files, readmeIdx, err := findMarkdownFiles(filePath)
+		if err != nil {
+			return err
+		}
+		dirPath = filePath
+		dirFiles = files
+		fileIndex = readmeIdx
+		targetFile = files[readmeIdx]
+		showFilePicker = true
+	}
+
+	content, err := os.ReadFile(targetFile)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
@@ -55,15 +80,14 @@ func RunFile(filePath string, style string, watch bool) error {
 	)
 	if watch {
 		var watchErr error
-		w, watchErr = watcher.New(filePath)
+		w, watchErr = watcher.New(targetFile)
 		if watchErr == nil {
-			defer w.Close()
 			reloadStatus = "⚡ Auto-reload"
 		}
 	}
 
 	m := model{
-		filePath:        filePath,
+		filePath:        targetFile,
 		content:         string(content),
 		currentStyle:    style,
 		availableStyles: styles,
@@ -73,6 +97,11 @@ func RunFile(filePath string, style string, watch bool) error {
 		watcher:         w,
 		reloadStatus:    reloadStatus,
 		isStdin:         false,
+		dirPath:         dirPath,
+		dirFiles:        dirFiles,
+		fileIndex:       fileIndex,
+		showFilePicker:  showFilePicker,
+		watchEnabled:    watch,
 	}
 
 	return runProgram(m, nil)
@@ -128,12 +157,16 @@ func runProgram(m model, tty *os.File) error {
 	p := tea.NewProgram(m, opts...)
 
 	finalModel, err := p.Run()
+	if finalM, ok := finalModel.(model); ok {
+		if finalM.watcher != nil {
+			_ = finalM.watcher.Close()
+		}
+		if err == nil && finalM.err != nil {
+			return finalM.err
+		}
+	}
 	if err != nil {
 		return err
-	}
-
-	if finalM, ok := finalModel.(model); ok && finalM.err != nil {
-		return finalM.err
 	}
 
 	return nil
