@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -51,6 +52,18 @@ func RunFile(filePath string, style string, watch bool) error {
 		fileIndex = readmeIdx
 		targetFile = files[readmeIdx]
 		showFilePicker = true
+	} else {
+		dirPath = filepath.Dir(filePath)
+		if files, _, err := findMarkdownFiles(dirPath); err == nil {
+			dirFiles = files
+			cleanTarget := filepath.Clean(filePath)
+			for i, f := range files {
+				if filepath.Clean(f) == cleanTarget {
+					fileIndex = i
+					break
+				}
+			}
+		}
 	}
 
 	content, err := os.ReadFile(targetFile)

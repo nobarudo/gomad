@@ -242,6 +242,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "p":
+			if m.isStdin {
+				return m, nil
+			}
+			m.refreshDirFiles()
 			if len(m.dirFiles) > 0 {
 				m.showFilePicker = true
 			}

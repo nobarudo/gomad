@@ -905,4 +905,39 @@ func TestFindMarkdownFilesAndDirectoryPicker(t *testing.T) {
 	if !m.showFilePicker {
 		t.Errorf("Expected showFilePicker to be true after pressing 'p'")
 	}
+
+	// 4. 単一ファイル指定で開いた状態からでも 'p' キーで同ディレクトリ内のファイル一覧を開いて移動できること
+	singleFileModel := model{
+		filePath:     zetaFile,
+		content:      "# Zeta",
+		width:        80,
+		height:       24,
+		ready:        true,
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+	if err := singleFileModel.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	updatedM, _ = singleFileModel.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	singleFileModel = updatedM.(model)
+	if !singleFileModel.showFilePicker {
+		t.Fatalf("Expected showFilePicker to be true when pressing 'p' in single-file mode")
+	}
+	if len(singleFileModel.dirFiles) != 3 {
+		t.Fatalf("Expected 3 files in dirFiles, got %d", len(singleFileModel.dirFiles))
+	}
+	if singleFileModel.fileIndex != 2 {
+		t.Errorf("Expected cursor on zeta.md (index 2), got %d", singleFileModel.fileIndex)
+	}
+
+	// 'k' で README.md (index 1) に移動して Enter で開く
+	updatedM, _ = singleFileModel.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	singleFileModel = updatedM.(model)
+	updatedM, _ = singleFileModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	singleFileModel = updatedM.(model)
+	if singleFileModel.filePath != readmeFile {
+		t.Errorf("Expected switched file to be %q, got %q", readmeFile, singleFileModel.filePath)
+	}
 }

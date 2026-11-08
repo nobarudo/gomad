@@ -26,12 +26,9 @@ func (m model) View() string {
 	}
 
 	// 上部ガイド：シンプルに保ち「:」でキーバインド一覧を表示することを案内
-	reloadGuide := " | 'e':編集 | 'r':リロード"
+	reloadGuide := " | 'p':一覧 | 'e':編集 | 'r':リロード"
 	if m.isStdin {
 		reloadGuide = ""
-	}
-	if len(m.dirFiles) > 0 {
-		reloadGuide = " | 'p':一覧" + reloadGuide
 	}
 	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':テーマ | 't':目次%s | ':':ヘルプ | 'q':QUIT)", m.filePath, m.currentStyle, reloadGuide)
 	if m.showSidebar {

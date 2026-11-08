@@ -53,6 +53,39 @@ func findMarkdownFiles(dirPath string) ([]string, int, error) {
 	return files, readmeIndex, nil
 }
 
+// refreshDirFiles は現在開いているファイルと同じディレクトリ内のマークダウン一覧を更新します
+func (m *model) refreshDirFiles() {
+	if m.isStdin || m.filePath == "" || m.filePath == "(stdin)" {
+		return
+	}
+	dir := filepath.Dir(m.filePath)
+	files, _, err := findMarkdownFiles(dir)
+	if err != nil {
+		if _, statErr := os.Stat(m.filePath); statErr == nil {
+			files = []string{filepath.Clean(m.filePath)}
+		} else {
+			return
+		}
+	}
+
+	cleanCurrent := filepath.Clean(m.filePath)
+	foundIdx := -1
+	for i, f := range files {
+		if filepath.Clean(f) == cleanCurrent {
+			foundIdx = i
+			break
+		}
+	}
+	if foundIdx == -1 {
+		files = append(files, cleanCurrent)
+		foundIdx = len(files) - 1
+	}
+
+	m.dirPath = dir
+	m.dirFiles = files
+	m.fileIndex = foundIdx
+}
+
 // selectDirFile はディレクトリ内の指定インデックスのマークダウンファイルを開きます
 func (m *model) selectDirFile(idx int) tea.Cmd {
 	if idx < 0 || idx >= len(m.dirFiles) {
@@ -142,7 +175,7 @@ func (m model) filePickerView() string {
 		}
 
 		activeMark := ""
-		if f == m.filePath {
+		if filepath.Clean(f) == filepath.Clean(m.filePath) {
 			activeMark = " (active)"
 		}
 

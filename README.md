@@ -125,7 +125,7 @@ curl -s https://raw.githubusercontent.com/.../README.md | gomad
 
 | Key | Description |
 | :--- | :--- |
-| `p` | Open Markdown file picker (when launched with a directory) |
+| `p` | Open Markdown file picker for the current directory |
 | `e` | Open file in external editor (`$VISUAL` / `$EDITOR` / `vi`) |
 | `r` | Manually reload file from disk |
 | `s` | Open theme picker modal |

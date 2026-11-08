@@ -33,7 +33,7 @@ func (m model) helpModalView() string {
 
 	b.WriteString("\x1b[1m[System]\x1b[0m\n")
 	b.WriteString("  s             : テーマ切り替えモーダル\n")
-	b.WriteString("  p             : ディレクトリ内ファイル一覧 (ディレクトリ指定時)\n")
+	b.WriteString("  p             : 同ディレクトリ内のファイル一覧\n")
 	b.WriteString("  e             : エディタで開く ($VISUAL / $EDITOR)\n")
 	b.WriteString("  r             : ファイルを手動再読み込み (Reload)\n")
 	b.WriteString("  :             : このヘルプを表示\n")

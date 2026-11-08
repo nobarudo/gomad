@@ -431,6 +431,7 @@ func (m *model) openSelectedLink() tea.Cmd {
 	m.currentLinkIndex = 0
 	m.searchQuery = ""
 	m.searchResults = nil
+	m.refreshDirFiles()
 
 	if err := m.renderContent(); err != nil {
 		m.err = err
@@ -477,6 +478,7 @@ func (m *model) navigateBack() tea.Cmd {
 	m.currentLinkIndex = 0
 	m.searchQuery = ""
 	m.searchResults = nil
+	m.refreshDirFiles()
 
 	// ファイルが存在する場合は最新の内容を読み直す
 	if !m.isStdin && m.filePath != "" && m.filePath != "(stdin)" {
