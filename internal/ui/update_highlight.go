@@ -8,17 +8,14 @@ func (m *model) updateHighlight() {
 		return
 	}
 
-	m.renderedLines = make([]string, len(m.pristineLines))
+	if len(m.renderedLines) != len(m.pristineLines) {
+		m.renderedLines = make([]string, len(m.pristineLines))
+	}
 	copy(m.renderedLines, m.pristineLines)
 
 	if len(m.searchResults) == 0 {
 		m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 		return
-	}
-
-	// 1. 全てのマッチ箇所に対して通常のハイライト（柔らかい黄色背景）を適用する
-	for i, line := range m.renderedLines {
-		m.renderedLines[i] = highlightQueryInLine(line, m.searchQuery, "\x1b[48;5;229m\x1b[38;5;0m", "\x1b[39;49m")
 	}
 
 	if m.currentMatchIndex < 0 {
@@ -30,8 +27,19 @@ func (m *model) updateHighlight() {
 
 	targetLine := m.searchResults[m.currentMatchIndex]
 
-	// 2. 現在のアクティブなマッチ箇所を目立つハイライト（オレンジ背景）にする
-	m.renderedLines[targetLine] = highlightQueryInLine(m.pristineLines[targetLine], m.searchQuery, "\x1b[48;5;214m\x1b[38;5;0m", "\x1b[39;49m")
+	// マッチした行だけを対象にハイライトを適用する（全行スキャンを回避）
+	for _, lineIdx := range m.searchResults {
+		if lineIdx < 0 || lineIdx >= len(m.pristineLines) {
+			continue
+		}
+		if lineIdx == targetLine {
+			// アクティブなマッチ箇所: 目立つオレンジ背景
+			m.renderedLines[lineIdx] = highlightQueryInLine(m.pristineLines[lineIdx], m.searchQuery, "\x1b[48;5;214m\x1b[38;5;0m", "\x1b[39;49m")
+		} else {
+			// その他のマッチ箇所: 柔らかい黄色背景
+			m.renderedLines[lineIdx] = highlightQueryInLine(m.pristineLines[lineIdx], m.searchQuery, "\x1b[48;5;229m\x1b[38;5;0m", "\x1b[39;49m")
+		}
+	}
 
 	m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 

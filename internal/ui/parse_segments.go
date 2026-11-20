@@ -7,8 +7,8 @@ type segment struct {
 
 // ANSIエスケープシーケンスと通常の文字に分解する（ルーン対応）
 func parseSegments(ansiStr string) []segment {
-	var segments []segment
 	runes := []rune(ansiStr)
+	segments := make([]segment, 0, len(runes))
 	n := len(runes)
 	i := 0
 	for i < n {

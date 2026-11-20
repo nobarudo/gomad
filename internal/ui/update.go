@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -368,6 +369,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		headerHeight := 1
+		wasReady := m.ready
+		prevWidth := m.viewport.Width
 
 		if !m.ready {
 			m.viewport = viewport.New(msg.Width, msg.Height-2)
@@ -376,9 +379,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.calculateLayout()
 
-		if err := m.renderContent(); err != nil {
-			m.err = err
-			return m, tea.Quit
+		// 縦サイズのみ変更された場合は折り返し幅が変わらないため再レンダリングをスキップ
+		if !wasReady || m.viewport.Width != prevWidth {
+			if err := m.renderContent(); err != nil {
+				m.err = err
+				return m, tea.Quit
+			}
 		}
 	}
 
@@ -456,22 +462,23 @@ func (m *model) syncSidebarCursor() {
 		return
 	}
 	currentY := m.viewport.YOffset
-	closestIdx := 0
-	for i, line := range m.headingLines {
-		if line <= currentY {
-			closestIdx = i
-		} else {
-			break
-		}
+	// currentY より大きい最初の見出しを二分探索し、その1つ前を選択する
+	idx := sort.Search(len(m.headingLines), func(i int) bool {
+		return m.headingLines[i] > currentY
+	})
+	closestIdx := idx - 1
+	if closestIdx < 0 {
+		closestIdx = 0
 	}
 
 	// ドキュメント最下部に到達している場合、画面内に見えている最も進んだ見出しに合わせる
 	if m.viewport.AtBottom() {
-		for i := len(m.headingLines) - 1; i >= 0; i-- {
-			if m.headingLines[i] < currentY+m.viewport.Height {
-				closestIdx = i
-				break
-			}
+		bottom := currentY + m.viewport.Height
+		bIdx := sort.Search(len(m.headingLines), func(i int) bool {
+			return m.headingLines[i] >= bottom
+		})
+		if bIdx > 0 {
+			closestIdx = bIdx - 1
 		}
 	}
 

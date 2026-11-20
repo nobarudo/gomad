@@ -8,8 +8,15 @@ func (m *model) prevParagraph() {
 		return
 	}
 	current := m.viewport.YOffset
+	usePlain := len(m.plainLines) == len(m.renderedLines)
 	for i := current - 1; i >= 0; i-- {
-		if strings.TrimSpace(stripANSI(m.renderedLines[i])) == "" {
+		var plain string
+		if usePlain {
+			plain = m.plainLines[i]
+		} else {
+			plain = stripANSI(m.renderedLines[i])
+		}
+		if strings.TrimSpace(plain) == "" {
 			m.viewport.SetYOffset(i)
 			return
 		}

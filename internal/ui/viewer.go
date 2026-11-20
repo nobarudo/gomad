@@ -33,9 +33,12 @@ type model struct {
 	showSearchInput   bool
 	searchQuery       string
 	searchResults     []int
-	currentMatchIndex int
-	pristineLines     []string
-	watcher           *watcher.Watcher
+	currentMatchIndex  int
+	pristineLines      []string
+	plainLines         []string
+	renderCache        map[rendererCacheKey]*cachedRender
+	renderCacheContent string
+	watcher            *watcher.Watcher
 	reloadStatus      string
 	lastReloadTime    time.Time
 	links             []linkItem

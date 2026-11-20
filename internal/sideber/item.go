@@ -14,24 +14,51 @@ type Item struct {
 
 var (
 	headingRegex = regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
-	ansiRegex    = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 )
 
 func stripANSI(str string) string {
-	return ansiRegex.ReplaceAllString(str, "")
+	idx := strings.IndexByte(str, '\x1b')
+	if idx == -1 {
+		return str
+	}
+
+	var b strings.Builder
+	b.Grow(len(str))
+	b.WriteString(str[:idx])
+
+	n := len(str)
+	for i := idx; i < n; {
+		if str[i] == '\x1b' && i+1 < n && str[i+1] == '[' {
+			j := i + 2
+			for j < n && ((str[j] >= '0' && str[j] <= '9') || str[j] == ';') {
+				j++
+			}
+			if j < n && ((str[j] >= 'a' && str[j] <= 'z') || (str[j] >= 'A' && str[j] <= 'Z')) {
+				i = j + 1
+				continue
+			}
+		}
+		b.WriteByte(str[i])
+		i++
+	}
+	return b.String()
 }
 
 // ParseItems はMarkdownテキストから見出しを抽出し、レンダリング後の行番号と紐付けます
 func ParseItems(content string, renderedLines []string) []Item {
-	lines := strings.Split(content, "\n")
-	var items []Item
-	inCodeBlock := false
-
 	// Glamourが付与したANSIエスケープシーケンス（カラーコード等）を除去したプレーン行を用意
 	plainLines := make([]string, len(renderedLines))
 	for i, rl := range renderedLines {
 		plainLines[i] = stripANSI(rl)
 	}
+	return ParseItemsWithPlainLines(content, plainLines)
+}
+
+// ParseItemsWithPlainLines は既にANSI除去済みの行配列を使って見出しを抽出します
+func ParseItemsWithPlainLines(content string, plainLines []string) []Item {
+	lines := strings.Split(content, "\n")
+	var items []Item
+	inCodeBlock := false
 
 	searchStart := 0
 

@@ -122,7 +122,7 @@ func (m *model) selectDirFile(idx int) tea.Cmd {
 		m.watcher = nil
 	}
 	if m.watchEnabled {
-		if newW, wErr := watcher.New(targetPath); wErr == nil {
+		if newW, wErr := watcher.New(targetPath, watcher.WithInitialContent(m.content)); wErr == nil {
 			m.watcher = newW
 			m.reloadStatus = "⚡ Auto-reload"
 			return m.waitForFileChange()

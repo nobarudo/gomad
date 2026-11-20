@@ -28,19 +28,28 @@ func WithDebounce(d time.Duration) Option {
 	}
 }
 
+// WithInitialContent は既に読み込み済みの初期コンテンツを渡すことで起動時の二重ファイル読み込みを回避します。
+func WithInitialContent(content string) Option {
+	return func(w *Watcher) {
+		w.lastContent = content
+		w.hasInitialContent = true
+	}
+}
+
 // Watcher は対象ファイルの変更を監視し、イベントを送信します。
 type Watcher struct {
-	filePath    string
-	absPath     string
-	parentDir   string
-	baseName    string
-	fsWatcher   *fsnotify.Watcher
-	debounce    time.Duration
-	events      chan Event
-	done        chan struct{}
-	closeOnce   sync.Once
-	mu          sync.Mutex
-	lastContent string
+	filePath          string
+	absPath           string
+	parentDir         string
+	baseName          string
+	fsWatcher         *fsnotify.Watcher
+	debounce          time.Duration
+	events            chan Event
+	done              chan struct{}
+	closeOnce         sync.Once
+	mu                sync.Mutex
+	lastContent       string
+	hasInitialContent bool
 }
 
 // New は新しい Watcher を生成して対象ファイルの親ディレクトリの監視を開始します。
@@ -53,31 +62,33 @@ func New(filePath string, opts ...Option) (*Watcher, error) {
 	parentDir := filepath.Dir(absPath)
 	baseName := filepath.Base(absPath)
 
-	initialContent, err := os.ReadFile(absPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read initial file: %w", err)
+	w := &Watcher{
+		filePath:  filePath,
+		absPath:   absPath,
+		parentDir: parentDir,
+		baseName:  baseName,
+		debounce:  100 * time.Millisecond,
+		events:    make(chan Event, 10),
+		done:      make(chan struct{}),
+	}
+
+	for _, opt := range opts {
+		opt(w)
+	}
+
+	if !w.hasInitialContent {
+		initialContent, err := os.ReadFile(absPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read initial file: %w", err)
+		}
+		w.lastContent = string(initialContent)
 	}
 
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fsnotify watcher: %w", err)
 	}
-
-	w := &Watcher{
-		filePath:    filePath,
-		absPath:     absPath,
-		parentDir:   parentDir,
-		baseName:    baseName,
-		fsWatcher:   fsWatcher,
-		debounce:    100 * time.Millisecond,
-		events:      make(chan Event, 10),
-		done:        make(chan struct{}),
-		lastContent: string(initialContent),
-	}
-
-	for _, opt := range opts {
-		opt(w)
-	}
+	w.fsWatcher = fsWatcher
 
 	// 親ディレクトリを監視する（各種エディタのアトミックセーブによる Rename/Create に対応するため）
 	if err := fsWatcher.Add(parentDir); err != nil {

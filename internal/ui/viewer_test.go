@@ -941,3 +941,49 @@ func TestFindMarkdownFilesAndDirectoryPicker(t *testing.T) {
 		t.Errorf("Expected switched file to be %q, got %q", readmeFile, singleFileModel.filePath)
 	}
 }
+
+func TestRenderCacheAndHeightOnlyResize(t *testing.T) {
+	m := model{
+		width:        100,
+		height:       30,
+		ready:        true,
+		content:      "# Title\n\nSome content with [link](https://example.com)",
+		currentStyle: "dark",
+		viewport:     viewport.New(100, 28),
+	}
+
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+	if len(m.renderCache) != 1 {
+		t.Fatalf("Expected 1 renderCache entry, got %d", len(m.renderCache))
+	}
+
+	// サイドバー開閉で2つ目の幅がキャッシュされる
+	m.showSidebar = true
+	m.calculateLayout()
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent with sidebar failed: %v", err)
+	}
+	if len(m.renderCache) != 2 {
+		t.Fatalf("Expected 2 renderCache entries after sidebar open, got %d", len(m.renderCache))
+	}
+
+	// コンテンツ更新時はキャッシュがクリアされて最新内容が描画されること
+	if err := m.applyNewContent("# Updated Title\n\nNew body"); err != nil {
+		t.Fatalf("applyNewContent failed: %v", err)
+	}
+	if len(m.renderCache) != 1 {
+		t.Fatalf("Expected renderCache reset to 1 entry after content change, got %d", len(m.renderCache))
+	}
+	if !strings.Contains(stripANSI(m.viewport.View()), "Updated Title") {
+		t.Errorf("Expected updated title in viewport, got:\n%s", stripANSI(m.viewport.View()))
+	}
+
+	// 縦サイズのみ変更した場合、viewport.Height が更新されること
+	updatedM, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 45})
+	m = updatedM.(model)
+	if m.viewport.Height != 43 {
+		t.Errorf("Expected viewport.Height 43 after vertical resize, got %d", m.viewport.Height)
+	}
+}

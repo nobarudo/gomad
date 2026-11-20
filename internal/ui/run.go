@@ -87,13 +87,15 @@ func RunFile(filePath string, style string, watch bool) error {
 	ti.CharLimit = 100
 	ti.Width = 40
 
+	contentStr := string(content)
+
 	var (
 		w            *watcher.Watcher
 		reloadStatus string
 	)
 	if watch {
 		var watchErr error
-		w, watchErr = watcher.New(targetFile)
+		w, watchErr = watcher.New(targetFile, watcher.WithInitialContent(contentStr))
 		if watchErr == nil {
 			reloadStatus = "⚡ Auto-reload"
 		}
@@ -101,7 +103,7 @@ func RunFile(filePath string, style string, watch bool) error {
 
 	m := model{
 		filePath:        targetFile,
-		content:         string(content),
+		content:         contentStr,
 		currentStyle:    style,
 		availableStyles: styles,
 		styleIndex:      initialIndex,

@@ -140,3 +140,33 @@ func TestWatcher_Close(t *testing.T) {
 		t.Fatalf("Timeout waiting for events channel to close")
 	}
 }
+
+func TestWatcher_WithInitialContent(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.md")
+
+	initial := "# Initial\n"
+	if err := os.WriteFile(testFile, []byte(initial), 0644); err != nil {
+		t.Fatalf("Failed to write initial file: %v", err)
+	}
+
+	w, err := New(testFile, WithDebounce(20*time.Millisecond), WithInitialContent(initial))
+	if err != nil {
+		t.Fatalf("New watcher with initial content failed: %v", err)
+	}
+	defer w.Close()
+
+	updated := "# Modified\n"
+	if err := os.WriteFile(testFile, []byte(updated), 0644); err != nil {
+		t.Fatalf("Failed to update file: %v", err)
+	}
+
+	select {
+	case ev := <-w.Events():
+		if ev.Content != updated {
+			t.Errorf("Expected %q, got %q", updated, ev.Content)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatalf("Timeout waiting for modification event")
+	}
+}

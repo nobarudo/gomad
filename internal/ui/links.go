@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -109,14 +110,21 @@ func cleanMarkdownInline(s string) string {
 
 // parseLinks はMarkdownテキストからリンクを抽出し、レンダリング後の行・文字位置にマッピングします
 func parseLinks(content string, pristineLines []string) []linkItem {
-	rawLinks := extractRawLinks(content)
-	if len(rawLinks) == 0 || len(pristineLines) == 0 {
+	if len(pristineLines) == 0 {
 		return nil
 	}
-
-	plainLines := make([][]rune, len(pristineLines))
+	plainStrs := make([]string, len(pristineLines))
 	for i, line := range pristineLines {
-		plainLines[i] = []rune(stripANSI(line))
+		plainStrs[i] = stripANSI(line)
+	}
+	return parseLinksWithPlainLines(content, plainStrs)
+}
+
+// parseLinksWithPlainLines は既にANSI除去済みの行配列を使ってリンクを抽出・マッピングします
+func parseLinksWithPlainLines(content string, plainStrs []string) []linkItem {
+	rawLinks := extractRawLinks(content)
+	if len(rawLinks) == 0 || len(plainStrs) == 0 {
+		return nil
 	}
 
 	var items []linkItem
@@ -125,7 +133,7 @@ func parseLinks(content string, pristineLines []string) []linkItem {
 
 	for _, rl := range rawLinks {
 		cleanText := cleanMarkdownInline(rl.text)
-		candidates := []string{}
+		candidates := make([]string, 0, 3)
 		if cleanText != "" && rl.url != "" && cleanText != rl.url {
 			candidates = append(candidates, cleanText+" "+rl.url)
 		}
@@ -137,17 +145,25 @@ func parseLinks(content string, pristineLines []string) []linkItem {
 		}
 
 		found := false
-		for lineIdx := searchLine; lineIdx < len(plainLines); lineIdx++ {
-			lineRunes := plainLines[lineIdx]
-			startCol := 0
-			if lineIdx == searchLine {
-				startCol = searchCol
-			}
-			if startCol >= len(lineRunes) {
+		for lineIdx := searchLine; lineIdx < len(plainStrs); lineIdx++ {
+			lineStr := plainStrs[lineIdx]
+			if lineStr == "" {
 				continue
 			}
 
-			subLine := string(lineRunes[startCol:])
+			var subLine string
+			startCol := 0
+			if lineIdx == searchLine && searchCol > 0 {
+				lineRunes := []rune(lineStr)
+				if searchCol >= len(lineRunes) {
+					continue
+				}
+				startCol = searchCol
+				subLine = string(lineRunes[startCol:])
+			} else {
+				subLine = lineStr
+			}
+
 			for _, cand := range candidates {
 				if cand == "" {
 					continue
@@ -161,8 +177,8 @@ func parseLinks(content string, pristineLines []string) []linkItem {
 
 					// 同じ行の直後に URL が続いている場合はまとめてハイライト範囲に含める
 					if cand == cleanText && rl.url != "" && cleanText != rl.url {
-						rest := string(lineRunes[eRune:])
-						if strings.HasPrefix(rest, " "+rl.url) {
+						restByteIdx := byteIdx + len(cand)
+						if restByteIdx < len(subLine) && strings.HasPrefix(subLine[restByteIdx:], " "+rl.url) {
 							eRune += 1 + len([]rune(rl.url))
 						}
 					}
@@ -345,37 +361,66 @@ func (m *model) updateLinkHighlight(autoScroll bool) {
 }
 
 func highlightLinkRangesInLine(ansiStr string, linkIndices []int, allLinks []linkItem, activeIdx int) string {
-	segments := parseSegments(ansiStr)
-	var plainToSeg []int
-	for segIdx, seg := range segments {
-		if !seg.isANSI {
-			plainToSeg = append(plainToSeg, segIdx)
-		}
+	if len(linkIndices) == 0 {
+		return ansiStr
 	}
 
-	for _, idx := range linkIndices {
-		link := allLinks[idx]
-		if link.startRune < 0 || link.endRune > len(plainToSeg) || link.startRune >= link.endRune {
+	var b strings.Builder
+	b.Grow(len(ansiStr) + len(linkIndices)*32)
+
+	li := 0
+	visibleRune := 0
+	n := len(ansiStr)
+
+	for i := 0; i < n; {
+		if ansiStr[i] == '\x1b' {
+			start := i
+			i++
+			for i < n {
+				c := ansiStr[i]
+				i++
+				if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+					break
+				}
+			}
+			b.WriteString(ansiStr[start:i])
 			continue
 		}
-		segStart := plainToSeg[link.startRune]
-		segEnd := plainToSeg[link.endRune-1]
 
-		startCode := "\x1b[48;5;229m\x1b[38;5;0m" // 非アクティブリンク: 柔らかい黄色背景
-		if idx == activeIdx {
-			startCode = "\x1b[48;5;214m\x1b[38;5;0m" // フォーカス中リンク: オレンジ背景
+		_, size := utf8.DecodeRuneInString(ansiStr[i:])
+
+		for li < len(linkIndices) {
+			link := allLinks[linkIndices[li]]
+			if link.startRune < link.endRune && link.endRune > visibleRune {
+				break
+			}
+			li++
 		}
-		endCode := "\x1b[39;49m"
 
-		segments[segStart].text = startCode + segments[segStart].text
-		segments[segEnd].text = segments[segEnd].text + endCode
+		if li < len(linkIndices) {
+			idx := linkIndices[li]
+			link := allLinks[idx]
+			if visibleRune == link.startRune {
+				if idx == activeIdx {
+					b.WriteString("\x1b[48;5;214m\x1b[38;5;0m") // フォーカス中リンク: オレンジ背景
+				} else {
+					b.WriteString("\x1b[48;5;229m\x1b[38;5;0m") // 非アクティブリンク: 柔らかい黄色背景
+				}
+			}
+			b.WriteString(ansiStr[i : i+size])
+			if visibleRune == link.endRune-1 {
+				b.WriteString("\x1b[39;49m")
+				li++
+			}
+		} else {
+			b.WriteString(ansiStr[i : i+size])
+		}
+
+		visibleRune++
+		i += size
 	}
 
-	var result strings.Builder
-	for _, seg := range segments {
-		result.WriteString(seg.text)
-	}
-	return result.String()
+	return b.String()
 }
 
 // openSelectedLink は現在フォーカスされているリンクを開きます（ブラウザ起動・アンカージャンプ・ローカルファイル遷移）
@@ -451,7 +496,7 @@ func (m *model) openSelectedLink() tea.Cmd {
 	// ファイル監視が有効な場合は遷移先ファイルに切り替え
 	if m.watcher != nil {
 		_ = m.watcher.Close()
-		if newW, wErr := watcher.New(resolvedPath); wErr == nil {
+		if newW, wErr := watcher.New(resolvedPath, watcher.WithInitialContent(m.content)); wErr == nil {
 			m.watcher = newW
 			m.reloadStatus = "⚡ Auto-reload"
 			return m.waitForFileChange()
@@ -499,7 +544,7 @@ func (m *model) navigateBack() tea.Cmd {
 
 	if m.watcher != nil && m.filePath != "" && m.filePath != "(stdin)" {
 		_ = m.watcher.Close()
-		if newW, wErr := watcher.New(m.filePath); wErr == nil {
+		if newW, wErr := watcher.New(m.filePath, watcher.WithInitialContent(m.content)); wErr == nil {
 			m.watcher = newW
 			m.reloadStatus = "⚡ Auto-reload"
 			return m.waitForFileChange()

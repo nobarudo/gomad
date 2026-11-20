@@ -192,6 +192,29 @@ func truncateString(s string, maxWidth int) string {
 	return string(runes) + "…"
 }
 
+var (
+	sidebarHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("86")) // シアン系
+
+	sidebarSepStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")) // 暗いグレー
+
+	sidebarSelectedFocusedStyle = lipgloss.NewStyle().
+					Bold(true).
+					Foreground(lipgloss.Color("205")) // マゼンタ / ハイライト
+
+	sidebarSelectedBlurredStyle = lipgloss.NewStyle().
+					Bold(true).
+					Foreground(lipgloss.Color("246")) // 非フォーカス時はグレー
+
+	sidebarNormalStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("252")) // 明るいグレー
+
+	sidebarFooterStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("241")) // ガイド文言
+)
+
 // View はサイドバーの表示文字列をレンダリングします
 func (m Model) View() string {
 	contentWidth := m.width - 2 // 右枠線(1) + 余裕(1)
@@ -199,28 +222,14 @@ func (m Model) View() string {
 		contentWidth = 5
 	}
 
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("86")) // シアン系
-
-	sepStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")) // 暗いグレー
-
-	selectedStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")) // マゼンタ / ハイライト
-
+	headerStyle := sidebarHeaderStyle
+	sepStyle := sidebarSepStyle
+	selectedStyle := sidebarSelectedFocusedStyle
 	if !m.focused {
-		selectedStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("246")) // 非フォーカス時はグレー
+		selectedStyle = sidebarSelectedBlurredStyle
 	}
-
-	normalStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")) // 明るいグレー
-
-	footerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")) // ガイド文言
+	normalStyle := sidebarNormalStyle
+	footerStyle := sidebarFooterStyle
 
 	var lines []string
 

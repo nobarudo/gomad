@@ -6,7 +6,12 @@ import (
 
 // Markdownの見出し位置（行番号）を解析・保持する
 func (m *model) updateHeadingLines() {
-	items := sideber.ParseItems(m.content, m.renderedLines)
+	var items []sideber.Item
+	if len(m.plainLines) == len(m.renderedLines) && len(m.plainLines) > 0 {
+		items = sideber.ParseItemsWithPlainLines(m.content, m.plainLines)
+	} else {
+		items = sideber.ParseItems(m.content, m.renderedLines)
+	}
 	m.sidebar.SetItems(items)
 
 	hLines := make([]int, len(items))
