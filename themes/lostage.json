@@ -78,7 +78,10 @@
     "color": "#a3c1e0",
     "background_color": "#142c4c"
   },
-  "code_block": {},
+  "code_block": {
+    "color": "#a3c1e0",
+    "background_color": "#142c4c"
+  },
   "table": {},
   "definition_list": {},
   "definition_term": {},
