@@ -21,7 +21,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:     "gomad [file.md | directory]",
 	Short:   "A simple terminal Markdown viewer",
-	Version: "0.1.2",
+	Version: "0.1.4",
 	Args:    cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 && args[0] != "-" {
@@ -50,7 +50,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	styleHelp := fmt.Sprintf("Markdown color style (%s)", strings.Join(themes.AvailableStyles(), ", "))
-	rootCmd.Flags().StringVarP(&styleFlag, "style", "s", "dark", styleHelp)
+	rootCmd.Flags().StringVarP(&styleFlag, "style", "s", "lostage", styleHelp)
 	// -w / --watch フラグを追加 (デフォルト値: true)
 	rootCmd.Flags().BoolVarP(&watchFlag, "watch", "w", true, "Enable auto-reload on file change")
 }
