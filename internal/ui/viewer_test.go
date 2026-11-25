@@ -987,3 +987,145 @@ func TestRenderCacheAndHeightOnlyResize(t *testing.T) {
 		t.Errorf("Expected viewport.Height 43 after vertical resize, got %d", m.viewport.Height)
 	}
 }
+
+func TestCopyModeSelectAndYank(t *testing.T) {
+	var copied string
+	origCopy := copyToClipboardFunc
+	copyToClipboardFunc = func(text string) error {
+		copied = text
+		return nil
+	}
+	defer func() {
+		copyToClipboardFunc = origCopy
+	}()
+
+	doc := strings.Join([]string{
+		"# Copy Mode Test",
+		"",
+		"Inline `code` should be ignored.",
+		"",
+		"```bash",
+		"echo hello",
+		"ls -la",
+		"```",
+		"",
+		"Some text in between.",
+		"",
+		"```go",
+		"func main() {",
+		"\tprintln(\"hi\")",
+		"}",
+		"```",
+		"",
+		"~~~",
+		"plain block",
+		"~~~",
+	}, "\n")
+
+	m := model{
+		filePath:     "copy_test.md",
+		width:        80,
+		height:       30,
+		ready:        true,
+		content:      doc,
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 28),
+	}
+	if err := m.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+
+	if len(m.codeBlocks) != 3 {
+		t.Fatalf("Expected 3 code blocks, got %d: %+v", len(m.codeBlocks), m.codeBlocks)
+	}
+	if m.codeBlocks[0].language != "bash" || m.codeBlocks[0].content != "echo hello\nls -la" {
+		t.Errorf("Unexpected first code block: %+v", m.codeBlocks[0])
+	}
+	if m.codeBlocks[1].language != "go" {
+		t.Errorf("Expected second code block language 'go', got %q", m.codeBlocks[1].language)
+	}
+	if m.codeBlocks[2].language != "" || m.codeBlocks[2].content != "plain block" {
+		t.Errorf("Unexpected third code block: %+v", m.codeBlocks[2])
+	}
+
+	// 1. 'y' キーでコピーモード開始 -> 最初のブロック (index 0) が選択される
+	updatedM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m = updatedM.(model)
+	if !m.copyMode {
+		t.Fatalf("Expected copyMode to be true after pressing 'y'")
+	}
+	if m.currentCodeIndex != 0 {
+		t.Errorf("Expected currentCodeIndex 0, got %d", m.currentCodeIndex)
+	}
+	view := m.View()
+	if !strings.Contains(view, "[COPY MODE]") || !strings.Contains(view, "COPY MODE (1/3) [bash, 2 lines]") {
+		t.Errorf("Expected copy mode status in view, got:\n%s", view)
+	}
+
+	// 2. 'n' キーで次のコードブロック (index 1: go) へ移動
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	m = updatedM.(model)
+	if m.currentCodeIndex != 1 {
+		t.Errorf("Expected currentCodeIndex 1 after 'n', got %d", m.currentCodeIndex)
+	}
+
+	// 3. もう一度 'n' で index 2、さらに 'p' で index 1 に戻る
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	m = updatedM.(model)
+	if m.currentCodeIndex != 2 {
+		t.Errorf("Expected currentCodeIndex 2 after second 'n', got %d", m.currentCodeIndex)
+	}
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	m = updatedM.(model)
+	if m.currentCodeIndex != 1 {
+		t.Errorf("Expected currentCodeIndex 1 after 'p', got %d", m.currentCodeIndex)
+	}
+
+	// 4. 'y' キーでコピー実行 -> クリップボードにコピーされ通常モードに戻る
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m = updatedM.(model)
+	if m.copyMode {
+		t.Errorf("Expected copyMode to exit after copying with 'y'")
+	}
+	expectedGo := "func main() {\n\tprintln(\"hi\")\n}"
+	if copied != expectedGo {
+		t.Errorf("Expected copied text %q, got %q", expectedGo, copied)
+	}
+	if !strings.Contains(m.reloadStatus, "📋 Copied!") {
+		t.Errorf("Expected reloadStatus to contain '📋 Copied!', got %q", m.reloadStatus)
+	}
+
+	// 5. Esc でキャンセルできること
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m = updatedM.(model)
+	if !m.copyMode {
+		t.Fatalf("Expected copyMode to be true")
+	}
+	updatedM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m = updatedM.(model)
+	if m.copyMode {
+		t.Errorf("Expected copyMode to be false after Esc")
+	}
+
+	// 6. コードブロックが存在しないドキュメントではコピーモードに入らないこと
+	noCodeModel := model{
+		filePath:     "plain.md",
+		width:        80,
+		height:       24,
+		ready:        true,
+		content:      "# No Code\n\nJust text.",
+		currentStyle: "dark",
+		viewport:     viewport.New(80, 22),
+	}
+	if err := noCodeModel.renderContent(); err != nil {
+		t.Fatalf("renderContent failed: %v", err)
+	}
+	updatedM, _ = noCodeModel.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	noCodeModel = updatedM.(model)
+	if noCodeModel.copyMode {
+		t.Errorf("Expected copyMode to remain false when there are no code blocks")
+	}
+	if noCodeModel.reloadStatus != "📋 No code blocks" {
+		t.Errorf("Expected '📋 No code blocks' status, got %q", noCodeModel.reloadStatus)
+	}
+}

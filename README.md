@@ -100,6 +100,7 @@ curl -s https://raw.githubusercontent.com/.../README.md | gomad
 | `o` / `O` | Focus next / previous link in document |
 | `Enter` | Open focused link (browser / local Markdown / anchor) |
 | `Backspace` / `Ctrl+o` | Navigate back to previous Markdown file |
+| `y` | Enter code block copy mode (`n`/`p` to select, `y`/`Enter` to copy, `Esc` to cancel) |
 
 ### Table of Contents (Sidebar)
 

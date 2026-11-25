@@ -31,7 +31,9 @@ func (m model) View() string {
 		reloadGuide = ""
 	}
 	header := fmt.Sprintf("📖 %s  [Style: %s] ('s':テーマ | 't':目次%s | ':':ヘルプ | 'q':QUIT)", m.filePath, m.currentStyle, reloadGuide)
-	if m.showSidebar {
+	if m.copyMode {
+		header = fmt.Sprintf("📖 %s  [COPY MODE] (n/j:次 | p/k:前 | y/Enter:コピー | Esc:終了)", m.filePath)
+	} else if m.showSidebar {
 		if m.sidebarFocused {
 			header = fmt.Sprintf("📖 %s  [目次操作中] (l/Tab:本文スクロール | t:目次を閉じる | ':':ヘルプ)", m.filePath)
 		} else {
@@ -49,6 +51,13 @@ func (m model) View() string {
 	var footer string
 	if m.showSearchInput {
 		footer = " " + m.searchInput.View()
+	} else if m.copyMode && len(m.codeBlocks) > 0 && m.currentCodeIndex >= 0 && m.currentCodeIndex < len(m.codeBlocks) {
+		cb := m.codeBlocks[m.currentCodeIndex]
+		meta := fmt.Sprintf("%d lines", cb.lineCount)
+		if cb.language != "" {
+			meta = fmt.Sprintf("%s, %d lines", cb.language, cb.lineCount)
+		}
+		footer = fmt.Sprintf(" 📋 COPY MODE (%d/%d) [%s] [n/p: Next/Prev, y/Enter: Copy, Esc: Cancel]", m.currentCodeIndex+1, len(m.codeBlocks), meta)
 	} else {
 		scrollPct := m.viewport.ScrollPercent() * 100
 		searchStatus := ""

@@ -144,6 +144,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// --- コピーモード中の操作 ---
+		if m.copyMode {
+			switch msg.String() {
+			case "n", "j", "down":
+				m.nextCodeBlock()
+			case "p", "k", "up":
+				m.prevCodeBlock()
+			case "y", "enter":
+				m.yankSelectedCodeBlock()
+			case "esc", "q":
+				m.exitCopyMode()
+			case "ctrl+c":
+				return m, tea.Quit
+			}
+			if m.showSidebar && !m.sidebarFocused {
+				m.syncSidebarCursor()
+			}
+			return m, nil
+		}
+
 		// --- 目次サイドバー表示中の操作 ---
 		if m.showSidebar {
 			// Tab キーで目次サイドバーと本文の操作フォーカスを切り替え
@@ -315,6 +335,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "O":
 			m.focusPrevLink()
+			return m, nil
+
+		case "y":
+			m.enterCopyMode()
+			if m.showSidebar && !m.sidebarFocused {
+				m.syncSidebarCursor()
+			}
 			return m, nil
 
 		case "enter":

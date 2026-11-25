@@ -23,6 +23,7 @@ type cachedRender struct {
 	sidebarItems  []sideber.Item
 	headingLines  []int
 	links         []linkItem
+	codeBlocks    []codeBlock
 }
 
 var (
@@ -105,6 +106,7 @@ func (m *model) renderContent() error {
 		}
 
 		links := parseLinksWithPlainLines(m.content, plainLines)
+		codeBlocks := parseCodeBlocksWithPlainLines(m.content, plainLines)
 
 		entry = &cachedRender{
 			rendered:      rendered,
@@ -113,6 +115,7 @@ func (m *model) renderContent() error {
 			sidebarItems:  items,
 			headingLines:  hLines,
 			links:         links,
+			codeBlocks:    codeBlocks,
 		}
 		if len(m.renderCache) >= 8 {
 			clear(m.renderCache)
@@ -127,6 +130,7 @@ func (m *model) renderContent() error {
 	m.sidebar.SetItems(entry.sidebarItems)
 	m.headingLines = entry.headingLines
 	m.links = entry.links
+	m.codeBlocks = entry.codeBlocks
 
 	if len(m.links) == 0 {
 		m.linkFocusActive = false
@@ -135,7 +139,16 @@ func (m *model) renderContent() error {
 		m.currentLinkIndex = len(m.links) - 1
 	}
 
-	if m.searchQuery != "" {
+	if len(m.codeBlocks) == 0 {
+		m.copyMode = false
+		m.currentCodeIndex = 0
+	} else if m.currentCodeIndex >= len(m.codeBlocks) {
+		m.currentCodeIndex = len(m.codeBlocks) - 1
+	}
+
+	if m.copyMode {
+		m.updateCopyHighlight(false)
+	} else if m.searchQuery != "" {
 		m.executeSearch(m.searchQuery)
 	} else if m.linkFocusActive {
 		m.updateLinkHighlight(false)

@@ -50,4 +50,7 @@ type model struct {
 	fileIndex         int
 	showFilePicker    bool
 	watchEnabled      bool
+	codeBlocks        []codeBlock
+	currentCodeIndex  int
+	copyMode          bool
 }
